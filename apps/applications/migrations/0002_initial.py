@@ -10,19 +10,19 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('subscriptions', '0001_initial'),
+        ('applications', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='subscription',
+            model_name='application',
             name='user',
-            field=models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='applications', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
-            model_name='subscription',
-            name='plan',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='subscriptions.subscriptionplan'),
+            model_name='statushistory',
+            name='application',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='history', to='applications.application'),
         ),
     ]

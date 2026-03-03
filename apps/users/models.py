@@ -7,7 +7,8 @@ from django.utils import timezone
 
 class User(AbstractUser):
     # extend user in future
-    pass
+    phone = models.CharField(max_length=20, blank=True)
+    location = models.CharField(max_length=255, blank=True)
 
 
 class PasswordResetToken(models.Model):
