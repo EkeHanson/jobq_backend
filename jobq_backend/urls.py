@@ -18,14 +18,16 @@ router.register(r'subscription', subscription_views.SubscriptionViewSet, basenam
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include(router.urls)),
     path('api/v1/auth/', include('apps.users.urls')),
+    # Custom views (must come before router includes)
     path('api/v1/jobs/extract/', job_views.JobExtractView.as_view(), name='job-extract'),
     path('api/v1/jobs/extract/status/<uuid:task_id>/', job_views.JobExtractStatusView.as_view(), name='job-extract-status'),
     path('api/v1/jobs/extract/result/<uuid:task_id>/', job_views.JobExtractResultView.as_view(), name='job-extract-result'),
     # subscription invoices
     path('api/v1/subscription/invoices/', subscription_views.InvoiceListView.as_view(), name='invoice-list'),
     path('api/v1/subscription/invoices/<int:invoice_id>/download/', subscription_views.InvoiceDownloadView.as_view(), name='invoice-download'),
+    # Router URLs last
+    path('api/v1/', include(router.urls)),
 ]
 
 # serve media in development

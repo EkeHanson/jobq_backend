@@ -1,10 +1,11 @@
 import os
 import logging
+import json
 
 try:
-    import openai
+    from openai import OpenAI
 except ImportError:
-    openai = None
+    OpenAI = None
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def extract_job_data(text: str) -> dict:
     If the OpenAI client is not installed or the API key is missing, a simple
     heuristic extraction is performed and an empty result is returned.
     """
-    if not openai:
+    if not OpenAI:
         logger.warning('openai package not installed, skipping AI extraction')
         return {}
 
@@ -27,38 +28,74 @@ def extract_job_data(text: str) -> dict:
         logger.warning('OPENAI_API_KEY not set, skipping AI extraction')
         return {}
 
-    openai.api_key = api_key
+    client = OpenAI(api_key=api_key)
 
-    # craft a prompt asking for JSON output
-    # prompt should request the exact field names the frontend expects so that
-    # the returned JSON can be used directly in AIPaste.preview.
+    # craft a prompt asking for JSON output with comprehensive fields
     prompt = (
-        "You are given the full text of a job posting. "
-        "Extract key information and return a JSON object using these keys when possible: "
-        "company_name, job_title, location, location_type, employment_type, experience_level, "
-        "salary_min, salary_max, salary_currency, contact_email, deadline, skills. "
-        "If some fields are not present, simply omit them or set them to null. "
+        "You are given the full text of a job posting. Extract ALL relevant information and return a JSON object. "
+        "Include these fields when available: "
+        "title, company, location, location_type (remote/hybrid/onsite), employment_type (full-time/part-time/contract), "
+        "experience_level, salary_min, salary_max, salary_currency, salary_period (yearly/monthly/hourly), "
+        "description, responsibilities, requirements, skills (as an array), benefits, company_description, "
+        "contact_email, application_url, job_url, posted_date, deadline, is_remote, "
+        "number_of_openings, department, reporting_to, travel_required." 
+        "If some fields are not present, use null. "
         "Only output the JSON object (no surrounding explanation). "
-        f"Here is the text:\n```{text}```"
+        f"Here is the job posting text:\n{text}"
     )
 
     try:
-        resp = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=500,
+            max_tokens=2000,
         )
-        content = resp.choices[0].message.content
-        # attempt to parse JSON
-        import json
-
-        try:
-            data = json.loads(content)
-            return data
-        except Exception as exc:
-            logger.error('failed to parse JSON from OpenAI response: %s', exc)
-            return {'raw': content}
+        content = response.choices[0].message.content
+        
+        # Clean up the response - sometimes AI adds markdown code blocks
+        content = content.strip()
+        if content.startswith('```json'):
+            content = content[7:]
+        if content.startswith('```'):
+            content = content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+        
+        # Attempt to parse JSON
+        data = json.loads(content)
+        
+        # Normalize field names to match expected format
+        normalized = {}
+        
+        # Title
+        if 'title' in data:
+            normalized['title'] = data['title']
+        elif 'job_title' in data:
+            normalized['title'] = data['job_title']
+        
+        # Company
+        if 'company' in data:
+            normalized['company'] = data['company']
+        elif 'company_name' in data:
+            normalized['company'] = data['company_name']
+        
+        # Copy other fields
+        for key in ['location', 'location_type', 'employment_type', 'experience_level',
+                    'salary_min', 'salary_max', 'salary_currency', 'salary_period',
+                    'description', 'responsibilities', 'requirements', 'skills',
+                    'benefits', 'company_description', 'contact_email', 'application_url',
+                    'job_url', 'posted_date', 'deadline', 'is_remote',
+                    'number_of_openings', 'department', 'reporting_to', 'travel_required']:
+            if key in data:
+                normalized[key] = data[key]
+        
+        return normalized
+        
+    except json.JSONDecodeError as exc:
+        logger.error('failed to parse JSON from OpenAI response: %s', exc)
+        return {'raw': content}
     except Exception as exc:
         logger.error('OpenAI API call failed: %s', exc)
         return {}

@@ -41,12 +41,19 @@ class JobExtractView(generics.CreateAPIView):
         # attempt AI extraction; falls back to simple parsing on failure
         try:
             ai_result = extract_job_data(text)
-            if ai_result:
+            # Check if result is not empty (even empty dict is falsy, so check explicitly)
+            if ai_result and isinstance(ai_result, dict) and len(ai_result) > 0:
                 task.result = ai_result
                 task.status = 'completed'
                 task.save()
-        except Exception:
-            # swallow errors, keep pending or let simple parser run
+                return Response({'task_id': task.task_id, 'extracted': ai_result}, status=status.HTTP_201_CREATED)
+            else:
+                # Log why it fell back
+                import logging
+                logging.warning(f"AI extraction returned empty result, falling back to simple parsing. Result: {ai_result}")
+        except Exception as e:
+            import logging
+            logging.error(f"AI extraction failed: {e}")
             pass
 
         # if the AI didn't return anything, fall back to naive split

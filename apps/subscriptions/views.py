@@ -2,10 +2,14 @@ from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import datetime, timedelta
+from django.db.models import Count
 
 from .models import SubscriptionPlan, Subscription
-from django.utils import timezone
 from .serializers import SubscriptionPlanSerializer, SubscriptionSerializer
+from apps.profiles.models import Profile
+from apps.applications.models import Application
 
 
 class SubscriptionViewSet(viewsets.ViewSet):
@@ -13,7 +17,7 @@ class SubscriptionViewSet(viewsets.ViewSet):
 
     def list(self, request):
         # return available plans
-        plans = SubscriptionPlan.objects.all()
+        plans = SubscriptionPlan.objects.filter(is_active=True)
         serializer = SubscriptionPlanSerializer(plans, many=True)
         return Response(serializer.data)
 
@@ -32,6 +36,8 @@ class SubscriptionViewSet(viewsets.ViewSet):
         sub.plan = plan
         sub.active = True
         sub.started_at = timezone.now()
+        sub.ai_pastes_used_this_month = 0
+        sub.last_usage_reset = timezone.now()
         sub.save()
         return Response(SubscriptionSerializer(sub).data)
 
@@ -66,6 +72,153 @@ class SubscriptionViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
         return Response({'url': ''})
+
+    @action(detail=False, methods=['get'])
+    def limits(self, request):
+        """
+        Get current user's subscription limits and usage
+        """
+        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        
+        # Get current counts
+        profile_count = Profile.objects.filter(user=request.user).count()
+        application_count = Application.objects.filter(user=request.user).count()
+        
+        # Check and reset monthly AI paste usage if needed
+        if sub.last_usage_reset:
+            days_since_reset = (timezone.now() - sub.last_usage_reset).days
+            if days_since_reset >= 30:
+                sub.ai_pastes_used_this_month = 0
+                sub.last_usage_reset = timezone.now()
+                sub.save()
+        
+        limits = sub.get_limits()
+        
+        return Response({
+            'limits': {
+                'max_applications': limits['max_applications'],
+                'max_profiles': limits['max_profiles'],
+                'max_ai_pastes': limits['max_ai_pastes'],
+            },
+            'usage': {
+                'applications': application_count,
+                'profiles': profile_count,
+                'ai_pastes_this_month': sub.ai_pastes_used_this_month,
+            },
+            'subscription': {
+                'active': sub.active,
+                'plan_name': sub.plan.name if sub.plan else None,
+            }
+        })
+
+    @action(detail=False, methods=['post'])
+    def check_limit(self, request):
+        """
+        Check if user can perform a specific action based on their subscription
+        """
+        action_type = request.data.get('action_type')  # 'create_application', 'create_profile', 'use_ai_paste'
+        
+        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        
+        if not sub.active or not sub.plan:
+            return Response({
+                'allowed': False,
+                'reason': 'No active subscription',
+                'upgrade_required': True,
+            })
+        
+        if action_type == 'create_application':
+            current_count = Application.objects.filter(user=request.user).count()
+            max_allowed = sub.plan.max_applications
+            allowed = current_count < max_allowed
+            return Response({
+                'allowed': allowed,
+                'current': current_count,
+                'limit': max_allowed,
+                'reason': 'Application limit reached' if not allowed else None,
+            })
+        
+        elif action_type == 'create_profile':
+            current_count = Profile.objects.filter(user=request.user).count()
+            max_allowed = sub.plan.max_profiles
+            allowed = current_count < max_allowed
+            return Response({
+                'allowed': allowed,
+                'current': current_count,
+                'limit': max_allowed,
+                'reason': 'Profile limit reached' if not allowed else None,
+            })
+        
+        elif action_type == 'use_ai_paste':
+            # Check monthly AI paste usage
+            if sub.last_usage_reset:
+                days_since_reset = (timezone.now() - sub.last_usage_reset).days
+                if days_since_reset >= 30:
+                    sub.ai_pastes_used_this_month = 0
+                    sub.last_usage_reset = timezone.now()
+                    sub.save()
+            
+            current_count = sub.ai_pastes_used_this_month
+            max_allowed = sub.plan.max_ai_pastes
+            
+            # 0 means unlimited
+            if max_allowed == 0:
+                return Response({
+                    'allowed': True,
+                    'current': current_count,
+                    'limit': 0,  # 0 means unlimited
+                    'reason': None,
+                })
+            
+            allowed = current_count < max_allowed
+            return Response({
+                'allowed': allowed,
+                'current': current_count,
+                'limit': max_allowed,
+                'reason': 'AI paste limit reached for this month' if not allowed else None,
+            })
+        
+        return Response({'error': 'Invalid action_type'}, status=400)
+
+    @action(detail=False, methods=['post'])
+    def record_ai_paste(self, request):
+        """
+        Record an AI paste usage
+        """
+        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        
+        if not sub.active or not sub.plan:
+            return Response({'error': 'No active subscription'}, status=403)
+        
+        # Check if unlimited (0 means unlimited)
+        if sub.plan.max_ai_pastes == 0:
+            return Response({
+                'allowed': True,
+                'pastes_used': sub.ai_pastes_used_this_month,
+                'pastes_remaining': 0,  # 0 means unlimited
+            })
+        
+        # Check and reset monthly usage if needed
+        if sub.last_usage_reset:
+            days_since_reset = (timezone.now() - sub.last_usage_reset).days
+            if days_since_reset >= 30:
+                sub.ai_pastes_used_this_month = 0
+                sub.last_usage_reset = timezone.now()
+        
+        if sub.ai_pastes_used_this_month >= sub.plan.max_ai_pastes:
+            return Response({
+                'allowed': False,
+                'reason': 'AI paste limit reached for this month',
+            }, status=403)
+        
+        sub.ai_pastes_used_this_month += 1
+        sub.save()
+        
+        return Response({
+            'allowed': True,
+            'pastes_used': sub.ai_pastes_used_this_month,
+            'pastes_remaining': sub.plan.max_ai_pastes - sub.ai_pastes_used_this_month,
+        })
 
 
 class InvoiceListView(generics.GenericAPIView):

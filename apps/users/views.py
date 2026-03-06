@@ -91,17 +91,18 @@ class LoginView(generics.GenericAPIView):
         from datetime import timedelta
         
         if remember_me:
-            # Use longer token lifetime for "remember me"
-            access_token_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('REMEMBER_TOKEN_LIFETIME', timedelta(days=30))
-            # print(f"[LOGIN SUCCESS] Remember Me enabled - token lifetime: {access_token_lifetime}")
+            # Use longer token lifetime for "remember me" - 30 days
+            access_token_lifetime = timedelta(days=30)
+            refresh_token_lifetime = timedelta(days=30)
         else:
             access_token_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('ACCESS_TOKEN_LIFETIME', timedelta(minutes=60))
-            # print(f"[LOGIN SUCCESS] Standard login - token lifetime: {access_token_lifetime}")
+            refresh_token_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('REFRESH_TOKEN_LIFETIME', timedelta(days=1))
         
         refresh = RefreshToken.for_user(user)
         
-        # Set custom access token lifetime
+        # Set custom token lifetimes
         refresh.access_token.lifetime = access_token_lifetime
+        refresh.lifetime = refresh_token_lifetime
         
         user_data = UserSerializer(user).data
         # print(f"[LOGIN SUCCESS] User logged in: {user.email}")
