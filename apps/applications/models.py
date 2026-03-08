@@ -22,6 +22,13 @@ class Application(models.Model):
     applied_date = models.DateField(null=True, blank=True, db_index=True)
     deadline = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    
+    # New optional fields
+    description = models.TextField(blank=True, help_text="Job description from the listing")
+    requirements = models.TextField(blank=True, help_text="Job requirements and qualifications")
+    resume = models.URLField(max_length=500, blank=True, help_text="Resume URL (uploaded and compressed)")
+    recruiter_questions = models.TextField(blank=True, help_text="Questions from the recruiter")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

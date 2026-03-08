@@ -99,6 +99,25 @@ class SupabaseStorageService(StorageService):
         self.bucket = settings.SUPABASE_BUCKET
         if not self.bucket:
             raise ValueError("SUPABASE_BUCKET is not configured properly")
+        
+        # Get the storage object properly for supabase v1.x
+        # The storage might be accessed as a method or property depending on version
+        try:
+            self.storage = self.client.storage
+            if callable(self.storage):
+                self.storage = self.storage()
+        except Exception as e:
+            logger.error(f"Error initializing Supabase storage: {e}")
+            raise
+    
+    def _get_bucket(self):
+        """Get the bucket object"""
+        try:
+            # Try v1.x API first
+            return self.storage.from_(self.bucket)
+        except AttributeError:
+            # Fall back to v2.x API
+            return self.storage.bucket(self.bucket)
 
     def sanitize_filename(self, filename):
         """Sanitize filename for Supabase/S3"""
@@ -121,7 +140,8 @@ class SupabaseStorageService(StorageService):
             else:
                 file_data = file_obj.read() if hasattr(file_obj, 'read') else file_obj
 
-            res = self.client.storage.from_(self.bucket).upload(
+            bucket = self._get_bucket()
+            res = bucket.upload(
                 path=file_name,
                 file=file_data,
                 file_options={"content-type": content_type, "cache-control": "3600", "upsert": "true"}
@@ -140,14 +160,16 @@ class SupabaseStorageService(StorageService):
 
     def get_public_url(self, file_name):
         try:
-            return self.client.storage.from_(self.bucket).get_public_url(file_name)
+            bucket = self._get_bucket()
+            return bucket.get_public_url(file_name)
         except Exception as e:
             logger.error(f"Error generating public URL in Supabase: {str(e)}")
             raise
 
     def delete_file(self, file_name):
         try:
-            self.client.storage.from_(self.bucket).remove([file_name])
+            bucket = self._get_bucket()
+            bucket.remove([file_name])
             logger.info(f"Successfully deleted {file_name} from Supabase")
             return True
         except Exception as e:
@@ -175,7 +197,8 @@ class SupabaseStorageService(StorageService):
         
         # Upload to Supabase
         try:
-            res = self.client.storage.from_(self.bucket).upload(
+            bucket = self._get_bucket()
+            res = bucket.upload(
                 path=zip_filename,
                 file=zip_data,
                 file_options={

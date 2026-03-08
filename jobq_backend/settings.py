@@ -18,7 +18,12 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 # URL settings
 APPEND_SLASH = True
 # STORAGE_TYPE = 'supabase'  # Options: 'supabase', 's3', 'azure', 'local'
-STORAGE_TYPE = 'local'
+STORAGE_TYPE = os.environ.get('STORAGE_TYPE', 'local')
+
+# Supabase Configuration
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+SUPABASE_BUCKET = os.environ.get('SUPABASE_BUCKET', '')
 
 
 
