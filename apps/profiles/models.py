@@ -56,7 +56,9 @@ class Certification(models.Model):
 
 class Resume(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='resumes')
-    file = models.FileField(upload_to='resumes/')
+    file = models.URLField(max_length=500, blank=True)  # Store URL from cloud storage
+    original_filename = models.CharField(max_length=255, blank=True)  # Original filename
+    file_size = models.IntegerField(default=0)  # File size in bytes
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

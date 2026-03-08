@@ -26,6 +26,8 @@ urlpatterns = [
     # subscription invoices
     path('api/v1/subscription/invoices/', subscription_views.InvoiceListView.as_view(), name='invoice-list'),
     path('api/v1/subscription/invoices/<int:invoice_id>/download/', subscription_views.InvoiceDownloadView.as_view(), name='invoice-download'),
+    # Public subscription plans (no auth required)
+    path('api/v1/subscription/plans/', subscription_views.public_subscription_plans, name='public-subscription-plans'),
     # Router URLs last
     path('api/v1/', include(router.urls)),
 ]

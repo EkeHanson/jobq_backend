@@ -19,6 +19,7 @@ from .serializers import (
     CertificationSerializer,
     ResumeSerializer,
 )
+from .upload_utils import upload_file_dynamic
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -94,9 +95,40 @@ class ResumeUploadView(viewsets.ViewSet):
     def create(self, request, profile_pk=None):
         profile = get_object_or_404(Profile, pk=profile_pk, user=request.user)
         file_obj = request.FILES.get('file')
-        resume = Resume.objects.create(profile=profile, file=file_obj)
-        serializer = ResumeSerializer(resume)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        if not file_obj:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get content type
+        content_type = file_obj.content_type
+        original_filename = file_obj.name
+        file_size = file_obj.size
+        
+        try:
+            # Upload to dynamic storage (compress by default)
+            file_url = upload_file_dynamic(
+                file_obj,
+                original_filename,
+                content_type,
+                compress=True  # Compress as zip
+            )
+            
+            # Create resume record with the URL
+            resume = Resume.objects.create(
+                profile=profile,
+                file=file_url,  # Store the URL instead of file object
+                original_filename=original_filename,
+                file_size=file_size
+            )
+            
+            serializer = ResumeSerializer(resume)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Upload failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ResumeViewSet(viewsets.ModelViewSet):

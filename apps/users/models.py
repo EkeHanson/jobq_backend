@@ -9,6 +9,8 @@ class User(AbstractUser):
     # extend user in future
     phone = models.CharField(max_length=20, blank=True)
     location = models.CharField(max_length=255, blank=True)
+    # Make email unique at database level
+    email = models.EmailField(unique=True)
 
 
 class PasswordResetToken(models.Model):

@@ -17,6 +17,10 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # URL settings
 APPEND_SLASH = True
+# STORAGE_TYPE = 'supabase'  # Options: 'supabase', 's3', 'azure', 'local'
+STORAGE_TYPE = 'local'
+
+
 
 # Application definition
 INSTALLED_APPS = [

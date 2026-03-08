@@ -36,7 +36,7 @@ class CertificationSerializer(serializers.ModelSerializer):
 class ResumeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resume
-        fields = ['id', 'file', 'uploaded_at']
+        fields = ['id', 'file', 'original_filename', 'file_size', 'uploaded_at']
 
 
 class ProfileSerializer(serializers.ModelSerializer):

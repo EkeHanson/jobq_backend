@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, status, generics
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -10,6 +11,18 @@ from .models import SubscriptionPlan, Subscription
 from .serializers import SubscriptionPlanSerializer, SubscriptionSerializer
 from apps.profiles.models import Profile
 from apps.applications.models import Application
+
+
+# Public view for listing subscription plans (no auth required)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_subscription_plans(request):
+    """
+    Public endpoint to get available subscription plans
+    """
+    plans = SubscriptionPlan.objects.filter(is_active=True)
+    serializer = SubscriptionPlanSerializer(plans, many=True)
+    return Response(serializer.data)
 
 
 class SubscriptionViewSet(viewsets.ViewSet):
