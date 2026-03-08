@@ -1,7 +1,9 @@
-from rest_framework import viewsets, status, generics, permissions
+from rest_framework import viewsets, status, generics, permissions, pagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 from .models import Job, Company, ExtractionTask
 from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSerializer
@@ -10,16 +12,50 @@ from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSeriali
 from apps.ai.services import extract_job_data
 
 
+class JobPagination(pagination.PageNumberPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class JobViewSet(viewsets.ModelViewSet):
-    queryset = Job.objects.all().order_by('-posted_at')
+    queryset = Job.objects.select_related('company').all().order_by('-posted_at')
     serializer_class = JobSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = JobPagination
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['title', 'description', 'company__name', 'location']
+    ordering_fields = ['posted_at', 'created_at', 'title']
+    ordering = ['-posted_at']  # LIFO - newest first
 
     def get_queryset(self):
         qs = super().get_queryset()
+        
+        # Search query
         search = self.request.query_params.get('search')
         if search:
-            qs = qs.filter(title__icontains=search)
+            qs = qs.filter(
+                Q(title__icontains=search) |
+                Q(description__icontains=search) |
+                Q(company__name__icontains=search) |
+                Q(location__icontains=search)
+            )
+        
+        # Job type filter
+        job_type = self.request.query_params.get('job_type')
+        if job_type:
+            qs = qs.filter(job_type=job_type)
+        
+        # Experience level filter
+        experience_level = self.request.query_params.get('experience_level')
+        if experience_level:
+            qs = qs.filter(experience_level=experience_level)
+        
+        # Location filter
+        location = self.request.query_params.get('location')
+        if location:
+            qs = qs.filter(location__icontains=location)
+        
         return qs
 
 

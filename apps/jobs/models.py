@@ -13,12 +13,42 @@ class Company(models.Model):
 
 
 class Job(models.Model):
+    JOB_TYPE_CHOICES = [
+        ('Full-time', 'Full-time'),
+        ('Part-time', 'Part-time'),
+        ('Contract', 'Contract'),
+        ('Internship', 'Internship'),
+        ('Remote', 'Remote'),
+    ]
+    
+    EXPERIENCE_LEVELS = [
+        ('Entry', 'Entry Level'),
+        ('Mid-Level', 'Mid-Level'),
+        ('Senior', 'Senior'),
+        ('Lead', 'Lead'),
+        ('Executive', 'Executive'),
+    ]
+    
     title = models.CharField(max_length=255)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='jobs')
     location = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
+    job_type = models.CharField(max_length=50, choices=JOB_TYPE_CHOICES, default='Full-time')
+    experience_level = models.CharField(max_length=50, choices=EXPERIENCE_LEVELS, default='Mid-Level')
+    salary_min = models.IntegerField(null=True, blank=True)
+    salary_max = models.IntegerField(null=True, blank=True)
+    salary_currency = models.CharField(max_length=10, default='USD')
     posted_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_jobs')
+
+    class Meta:
+        ordering = ['-posted_at']  # LIFO - newest first
+        indexes = [
+            models.Index(fields=['-posted_at']),  # Fast sorting by date
+            models.Index(fields=['job_type']),
+            models.Index(fields=['experience_level']),
+            models.Index(fields=['location']),
+        ]
 
     def __str__(self):
         return f"{self.title} @ {self.company}"
