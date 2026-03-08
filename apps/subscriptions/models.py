@@ -18,7 +18,7 @@ class SubscriptionPlan(models.Model):
 class Subscription(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True)
-    active = models.BooleanField(default=False)
+    active = models.BooleanField(default=False, db_index=True)
     started_at = models.DateTimeField(null=True, blank=True)
     canceled_at = models.DateTimeField(null=True, blank=True)
     ai_pastes_used_this_month = models.IntegerField(default=0)

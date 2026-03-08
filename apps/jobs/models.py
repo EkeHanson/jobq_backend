@@ -18,7 +18,7 @@ class Job(models.Model):
     location = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
     posted_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_jobs')
 
     def __str__(self):
         return f"{self.title} @ {self.company}"
