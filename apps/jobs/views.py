@@ -25,7 +25,7 @@ class JobViewSet(viewsets.ModelViewSet):
     pagination_class = JobPagination
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['title', 'description', 'company__name', 'location']
-    ordering_fields = ['posted_at', 'created_at', 'title']
+    ordering_fields = ['posted_at', 'title']
     ordering = ['-posted_at']  # LIFO - newest first
 
     def get_queryset(self):
