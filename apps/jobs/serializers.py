@@ -14,10 +14,18 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = [
-            'id', 'title', 'company', 'location', 'description', 
+            'id', 'title', 'company', 'location', 'industry', 'description', 
             'job_type', 'experience_level', 'salary_min', 'salary_max',
-            'salary_currency', 'posted_at'
+            'salary_currency', 'application_link', 'application_email', 'posted_at'
         ]
+
+    def validate(self, data):
+        """Ensure at least application_link or application_email is provided."""
+        if not data.get('application_link') and not data.get('application_email'):
+            raise serializers.ValidationError(
+                "Either application_link or application_email must be provided."
+            )
+        return data
 
     def create(self, validated_data):
         company_data = validated_data.pop('company', None)

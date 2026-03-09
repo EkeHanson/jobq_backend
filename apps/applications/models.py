@@ -29,6 +29,13 @@ class Application(models.Model):
     resume = models.URLField(max_length=500, blank=True, help_text="Resume URL (uploaded and compressed)")
     recruiter_questions = models.TextField(blank=True, help_text="Questions from the recruiter")
     
+    # Archive feature
+    archived = models.BooleanField(default=False, db_index=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    
+    # Soft delete
+    deleted_at = models.DateTimeField(null=True, blank=True, help_text="Soft delete timestamp")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -37,7 +44,9 @@ class Application(models.Model):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'archived']),
             models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['user', 'deleted_at']),
         ]
 
     def __str__(self):

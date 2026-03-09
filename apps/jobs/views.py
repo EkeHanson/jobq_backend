@@ -56,6 +56,11 @@ class JobViewSet(viewsets.ModelViewSet):
         if location:
             qs = qs.filter(location__icontains=location)
         
+        # Industry filter
+        industry = self.request.query_params.get('industry')
+        if industry:
+            qs = qs.filter(industry=industry)
+        
         return qs
 
 

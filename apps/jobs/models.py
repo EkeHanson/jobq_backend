@@ -29,15 +29,40 @@ class Job(models.Model):
         ('Executive', 'Executive'),
     ]
     
+    INDUSTRY_CHOICES = [
+        ('Technology', 'Technology'),
+        ('Healthcare', 'Healthcare'),
+        ('Finance', 'Finance'),
+        ('Manufacturing', 'Manufacturing'),
+        ('Security', 'Security'),
+        ('Retail', 'Retail'),
+        ('Education', 'Education'),
+        ('Construction', 'Construction'),
+        ('Transportation', 'Transportation'),
+        ('Hospitality', 'Hospitality'),
+        ('Media', 'Media'),
+        ('Consulting', 'Consulting'),
+        ('Legal', 'Legal'),
+        ('Real Estate', 'Real Estate'),
+        ('Energy', 'Energy'),
+        ('Telecommunications', 'Telecommunications'),
+        ('Government', 'Government'),
+        ('Non-Profit', 'Non-Profit'),
+        ('Other', 'Other'),
+    ]
+    
     title = models.CharField(max_length=255)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='jobs')
     location = models.CharField(max_length=255, blank=True)
+    industry = models.CharField(max_length=100, choices=INDUSTRY_CHOICES, default='Other')
     description = models.TextField(blank=True)
     job_type = models.CharField(max_length=50, choices=JOB_TYPE_CHOICES, default='Full-time')
     experience_level = models.CharField(max_length=50, choices=EXPERIENCE_LEVELS, default='Mid-Level')
     salary_min = models.IntegerField(null=True, blank=True)
     salary_max = models.IntegerField(null=True, blank=True)
     salary_currency = models.CharField(max_length=10, default='USD')
+    application_link = models.URLField(blank=True, null=True)
+    application_email = models.EmailField(blank=True, null=True)
     posted_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_jobs')
 
@@ -48,6 +73,7 @@ class Job(models.Model):
             models.Index(fields=['job_type']),
             models.Index(fields=['experience_level']),
             models.Index(fields=['location']),
+            models.Index(fields=['industry']),
         ]
 
     def __str__(self):

@@ -2,6 +2,7 @@ from rest_framework import viewsets, generics, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Count
+from django.utils import timezone
 
 from .models import Application, StatusHistory
 from .serializers import ApplicationSerializer, StatusHistorySerializer
@@ -17,6 +18,19 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not self.request.user.is_staff:
             qs = qs.filter(user=user)
+        
+        # Filter by archived status - show all by default
+        archived = self.request.query_params.get('archived')
+        if archived is not None:
+            qs = qs.filter(archived=archived.lower() == 'true')
+        # No filter param = show all (both active and archived)
+        
+        # Filter out soft-deleted applications by default
+        # Include deleted if explicitly requested
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        if not include_deleted:
+            qs = qs.filter(deleted_at__isnull=True)
+        
         return qs
     
     @action(detail=False, methods=['get'])
@@ -45,8 +59,43 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             'response_rate': response_rate,
             'interview_rate': interview_rate,
             'offer_rate': offer_rate,
+            'archived_count': qs.filter(archived=True).count(),
         }
         return Response(stats)
+
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Archive an application"""
+        application = self.get_object()
+        application.archived = True
+        application.archived_at = timezone.now()
+        application.save()
+        return Response({'status': 'archived', 'archived_at': application.archived_at})
+
+    @action(detail=True, methods=['post'])
+    def unarchive(self, request, pk=None):
+        """Unarchive an application"""
+        application = self.get_object()
+        application.archived = False
+        application.archived_at = None
+        application.save()
+        return Response({'status': 'unarchived'})
+
+    @action(detail=True, methods=['post'])
+    def soft_delete(self, request, pk=None):
+        """Soft delete an application"""
+        application = self.get_object()
+        application.deleted_at = timezone.now()
+        application.save()
+        return Response({'status': 'deleted', 'deleted_at': application.deleted_at})
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """Restore a soft-deleted application"""
+        application = self.get_object()
+        application.deleted_at = None
+        application.save()
+        return Response({'status': 'restored'})
 
 
 class StatusHistoryView(generics.ListAPIView):

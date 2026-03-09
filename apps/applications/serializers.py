@@ -17,8 +17,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
         model = Application
         fields = ['id', 'user', 'job_title', 'company_name', 'status', 'applied_date', 'deadline', 'notes', 
                   'description', 'requirements', 'resume', 'recruiter_questions', 'resume_file',
-                  'history', 'created_at', 'updated_at']
-        read_only_fields = ['user', 'created_at', 'updated_at', 'resume']
+                  'history', 'archived', 'archived_at', 'deleted_at', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at', 'resume', 'archived', 'archived_at', 'deleted_at']
 
     def create(self, validated_data):
         user = self.context['request'].user
