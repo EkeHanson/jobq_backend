@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import PasswordResetToken
+from .models import PasswordResetToken, TwoFactorToken
 
 User = get_user_model()
 
@@ -8,7 +8,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone', 'location']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone', 'location', 'is_active', 'is_suspended', 'suspension_reason', 'suspended_at', 'is_2fa_enabled', 'date_joined', 'last_login']
         extra_kwargs = {
             'username': {'required': False},
             'email': {'required': False},
@@ -125,4 +125,50 @@ class PasswordResetSerializer(serializers.Serializer):
         except (User.DoesNotExist, PasswordResetToken.DoesNotExist):
             raise serializers.ValidationError('Invalid email or token.')
         
+        return data
+
+
+class TwoFactorVerifySerializer(serializers.Serializer):
+    """Serializer for verifying 2FA code"""
+    email = serializers.EmailField()
+    token = serializers.CharField(min_length=6, max_length=6)
+
+    def validate(self, data):
+        email = data.get('email')
+        token = data.get('token')
+        
+        try:
+            user = User.objects.get(email=email)
+            two_factor_token = TwoFactorToken.objects.filter(
+                user=user, 
+                token=token,
+                is_used=False
+            ).first()
+            
+            if not two_factor_token or not two_factor_token.is_valid():
+                raise serializers.ValidationError('Invalid or expired 2FA code.')
+            
+            # Store token object for later use
+            self.two_factor_token = two_factor_token
+            self.user = user
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Invalid email or token.')
+        
+        return data
+
+
+class TwoFactorEnableSerializer(serializers.Serializer):
+    """Serializer for enabling/disabling 2FA"""
+    enable = serializers.BooleanField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        # Get the user from the view context
+        user = self.context.get('request').user
+        password = data.get('password')
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError('Invalid password.')
+        
+        self.user = user
         return data

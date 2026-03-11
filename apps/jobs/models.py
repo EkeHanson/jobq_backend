@@ -90,3 +90,19 @@ class ExtractionTask(models.Model):
 
     def __str__(self):
         return str(self.task_id)
+
+
+class JobBookmark(models.Model):
+    """Model to store user's bookmarked jobs"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='job_bookmarks')
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='bookmarks')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'job']  # Prevent duplicate bookmarks
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user} bookmarked {self.job}"

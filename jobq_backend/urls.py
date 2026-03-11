@@ -13,12 +13,16 @@ router.register(r'jobs', job_views.JobViewSet, basename='job')
 router.register(r'companies', job_views.CompanyViewSet, basename='company')
 router.register(r'applications', app_views.ApplicationViewSet, basename='application')
 router.register(r'notifications', notification_views.NotificationViewSet, basename='notification')
+router.register(r'contact', notification_views.ContactMessageViewSet, basename='contact')
+router.register(r'reviews', notification_views.ReviewViewSet, basename='review')
 router.register(r'profiles', profile_views.ProfileViewSet, basename='profile')
 router.register(r'subscription', subscription_views.SubscriptionViewSet, basename='subscription')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/auth/', include('apps.users.urls')),
+    # Blog endpoints
+    path('api/v1/blog/', include('apps.blog.urls')),
     # Custom views (must come before router includes)
     path('api/v1/jobs/extract/', job_views.JobExtractView.as_view(), name='job-extract'),
     path('api/v1/jobs/extract/status/<uuid:task_id>/', job_views.JobExtractStatusView.as_view(), name='job-extract-status'),

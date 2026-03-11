@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Job, Company, ExtractionTask
+from .models import Job, Company, ExtractionTask, JobBookmark
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -10,14 +10,23 @@ class CompanySerializer(serializers.ModelSerializer):
 
 class JobSerializer(serializers.ModelSerializer):
     company = CompanySerializer()
+    is_bookmarked = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
         fields = [
             'id', 'title', 'company', 'location', 'industry', 'description', 
             'job_type', 'experience_level', 'salary_min', 'salary_max',
-            'salary_currency', 'application_link', 'application_email', 'posted_at'
+            'salary_currency', 'application_link', 'application_email', 'posted_at',
+            'is_bookmarked'
         ]
+
+    def get_is_bookmarked(self, obj):
+        """Check if the current user has bookmarked this job"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return JobBookmark.objects.filter(user=request.user, job=obj).exists()
+        return False
 
     def validate(self, data):
         """Ensure at least application_link or application_email is provided."""
@@ -46,3 +55,11 @@ class ExtractionTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExtractionTask
         fields = ['task_id', 'input_text', 'status', 'result', 'created_at', 'updated_at']
+
+
+class JobBookmarkSerializer(serializers.ModelSerializer):
+    job = JobSerializer()
+    
+    class Meta:
+        model = JobBookmark
+        fields = ['id', 'job', 'created_at']

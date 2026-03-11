@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.subscriptions',
     'apps.ai',
     'apps.profiles',
+    'apps.blog',
 ]
 
 MIDDLEWARE = [
@@ -155,7 +156,14 @@ REST_FRAMEWORK = {
 }
 
 # CORS
-CORS_ALLOW_ALL_ORIGINS = True
+# Allow frontend origins to access the API
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+
+# CSRF settings (needed when frontend and backend are on different domains)
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173').split(',')
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_HTTPONLY = False
 
 # Simple JWT
 from datetime import timedelta

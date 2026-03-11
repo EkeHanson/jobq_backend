@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -11,10 +14,13 @@ from .serializers import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PasswordResetSerializer,
+    TwoFactorVerifySerializer,
+    TwoFactorEnableSerializer,
 )
-from .models import PasswordResetToken
+from .models import PasswordResetToken, TwoFactorToken
 
 User = get_user_model()
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -41,11 +47,14 @@ class RegisterView(generics.CreateAPIView):
             
             refresh = RefreshToken.for_user(user)
             data = serializer.data
-            return Response({
-                'user': data,
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-            }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    'user': data,
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                },
+                status=status.HTTP_201_CREATED,
+            )
         except Exception as e:
             print(f"[REGISTER EXCEPTION] Error creating user: {str(e)}")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -86,6 +95,53 @@ class LoginView(generics.GenericAPIView):
             # print(f"[LOGIN FAILED] Password check failed for user: {identifier}")
             return Response({'detail': 'Invalid credentials - incorrect password'}, status=400)
         
+        # Check if user account is suspended
+        if user.is_suspended:
+            return Response(
+                {'detail': 'Your account has been suspended. Please contact support for assistance.'},
+                status=403
+            )
+        
+        # Check if user account is active
+        if not user.is_active:
+            return Response(
+                {'detail': 'Your account has been deactivated. Please contact support for assistance.'},
+                status=403
+            )
+        
+        # Check if 2FA is enabled
+        if user.is_2fa_enabled:
+            # Delete old unused tokens for this user
+            TwoFactorToken.objects.filter(user=user, is_used=False).delete()
+            
+            # Create new 2FA token
+            two_factor_token = TwoFactorToken.objects.create(user=user)
+            
+            # Send 2FA code via email
+            try:
+                send_mail(
+                    subject='Your Login Verification Code',
+                    message=f'Your verification code is: {two_factor_token.token}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, please ignore this email.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                return Response(
+                    {'detail': 'Failed to send verification code. Please try again.'},
+                    status=500
+                )
+            
+            # Return response indicating 2FA is required
+            return Response(
+                {
+                    'require_2fa': True,
+                    'email': user.email,
+                    'message': 'A verification code has been sent to your email.'
+                },
+                status=200
+            )
+        
         # Generate tokens with custom lifetime based on remember_me
         from django.conf import settings
         from datetime import timedelta
@@ -105,13 +161,14 @@ class LoginView(generics.GenericAPIView):
         refresh.lifetime = refresh_token_lifetime
         
         user_data = UserSerializer(user).data
-        # print(f"[LOGIN SUCCESS] User logged in: {user.email}")
-        
-        return Response({
-            'user': user_data,
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-        })
+
+        return Response(
+            {
+                'user': user_data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            }
+        )
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -126,13 +183,31 @@ class LogoutView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        # If a refresh token is sent in the body, blacklist it.
         try:
             refresh_token = request.data.get('refresh')
             token = RefreshToken(refresh_token)
             token.blacklist()
         except Exception:
             pass
+
         return Response(status=204)
+
+
+class CookieTokenRefreshView(generics.GenericAPIView):
+    """Refresh access token using the supplied refresh token."""
+
+    permission_classes = [permissions.AllowAny]
+    serializer_class = TokenRefreshSerializer
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            return Response({'detail': 'Refresh token missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data={'refresh': refresh_token})
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data)
 
 
 class GoogleLoginView(generics.GenericAPIView):
@@ -195,11 +270,13 @@ class GoogleLoginView(generics.GenericAPIView):
             refresh = RefreshToken.for_user(user)
             user_data = UserSerializer(user).data
             
-            return Response({
-                'user': user_data,
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-            })
+            return Response(
+                {
+                    'user': user_data,
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                }
+            )
             
         except Exception as e:
             return Response(
@@ -436,3 +513,147 @@ class PasswordResetView(generics.GenericAPIView):
             {'detail': 'Password reset successfully'},
             status=status.HTTP_200_OK
         )
+
+
+class TwoFactorVerifyView(generics.GenericAPIView):
+    """Verify 2FA code and return tokens"""
+    serializer_class = TwoFactorVerifySerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = serializer.user
+        two_factor_token = serializer.two_factor_token
+        remember_me = request.data.get('remember_me', False)
+        
+        # Mark token as verified
+        two_factor_token.is_verified = True
+        two_factor_token.save()
+        
+        # Generate tokens with custom lifetime based on remember_me
+        from datetime import timedelta
+        
+        if remember_me:
+            access_token_lifetime = timedelta(days=30)
+            refresh_token_lifetime = timedelta(days=30)
+        else:
+            access_token_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('ACCESS_TOKEN_LIFETIME', timedelta(minutes=60))
+            refresh_token_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('REFRESH_TOKEN_LIFETIME', timedelta(days=1))
+        
+        refresh = RefreshToken.for_user(user)
+        
+        # Set custom token lifetimes
+        refresh.access_token.lifetime = access_token_lifetime
+        refresh.lifetime = refresh_token_lifetime
+        
+        user_data = UserSerializer(user).data
+        
+        return Response(
+            {
+                'user': user_data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            }
+        )
+
+
+class TwoFactorManageView(generics.GenericAPIView):
+    """Enable or disable 2FA for the current user"""
+    serializer_class = TwoFactorEnableSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        enable = serializer.validated_data['enable']
+        
+        user.is_2fa_enabled = enable
+        user.save()
+        
+        if enable:
+            return Response(
+                {'detail': 'Two-factor authentication has been enabled.'},
+                status=status.HTTP_200_OK
+            )
+        else:
+            # Delete all unused 2FA tokens when disabling
+            TwoFactorToken.objects.filter(user=user, is_used=False).delete()
+            return Response(
+                {'detail': 'Two-factor authentication has been disabled.'},
+                status=status.HTTP_200_OK
+            )
+
+
+class UserManagementView(generics.GenericAPIView):
+    """Admin endpoint to manage user accounts (suspend/unsuspend)"""
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request, *args, **kwargs):
+        """List all users (paginated)"""
+        from django.core.paginator import Paginator
+        
+        users = User.objects.all().order_by('-date_joined')
+        paginator = Paginator(users, 20)
+        page = request.query_params.get('page', 1)
+        
+        try:
+            users_page = paginator.page(page)
+        except:
+            users_page = paginator.page(1)
+        
+        serializer = UserSerializer(users_page.object_list, many=True)
+        return Response({
+            'results': serializer.data,
+            'count': paginator.count,
+            'total_pages': paginator.num_pages,
+            'current_page': page
+        })
+    
+    def post(self, request, *args, **kwargs):
+        """Suspend or unsuspend a user"""
+        user_id = request.data.get('user_id')
+        action = request.data.get('action')  # 'suspend' or 'unsuspend'
+        reason = request.data.get('reason', '')
+        
+        if not user_id:
+            return Response(
+                {'detail': 'user_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if action not in ['suspend', 'unsuspend']:
+            return Response(
+                {'detail': 'action must be either "suspend" or "unsuspend"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if action == 'suspend':
+            user.is_suspended = True
+            user.suspension_reason = reason or 'Suspended by admin'
+            user.suspended_at = timezone.now()
+            user.save()
+            return Response({
+                'detail': f'User {user.email} has been suspended',
+                'user': UserSerializer(user).data
+            })
+        else:
+            user.is_suspended = False
+            user.suspension_reason = ''
+            user.suspended_at = None
+            user.save()
+            return Response({
+                'detail': f'User {user.email} has been unsuspended',
+                'user': UserSerializer(user).data
+            })

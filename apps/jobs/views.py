@@ -5,8 +5,8 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
-from .models import Job, Company, ExtractionTask
-from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSerializer
+from .models import Job, Company, ExtractionTask, JobBookmark
+from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSerializer, JobBookmarkSerializer
 
 # AI extraction helper
 from apps.ai.services import extract_job_data
@@ -62,6 +62,34 @@ class JobViewSet(viewsets.ModelViewSet):
             qs = qs.filter(industry=industry)
         
         return qs
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def bookmark(self, request, pk=None):
+        """Bookmark a job for the current user"""
+        job = self.get_object()
+        bookmark, created = JobBookmark.objects.get_or_create(
+            user=request.user,
+            job=job
+        )
+        if created:
+            return Response({'status': 'bookmarked', 'bookmark_id': bookmark.id}, status=status.HTTP_201_CREATED)
+        return Response({'status': 'already bookmarked', 'bookmark_id': bookmark.id})
+
+    @action(detail=True, methods=['delete'], permission_classes=[permissions.IsAuthenticated])
+    def unbookmark(self, request, pk=None):
+        """Remove bookmark from a job"""
+        job = self.get_object()
+        deleted, _ = JobBookmark.objects.filter(user=request.user, job=job).delete()
+        if deleted:
+            return Response({'status': 'unbookmarked'})
+        return Response({'status': 'not bookmarked'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def bookmarks(self, request):
+        """Get all bookmarked jobs for current user"""
+        bookmarks = JobBookmark.objects.filter(user=request.user).order_by('-created_at')
+        serializer = JobBookmarkSerializer(bookmarks, many=True)
+        return Response(serializer.data)
 
 
 class CompanyViewSet(viewsets.ModelViewSet):
