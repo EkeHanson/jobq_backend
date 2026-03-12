@@ -23,7 +23,9 @@ from .upload_utils import upload_file_dynamic
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
-    queryset = Profile.objects.select_related('user').all()
+    queryset = Profile.objects.select_related('user').prefetch_related(
+        'skills', 'experiences', 'education', 'certifications', 'resumes'
+    ).all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 

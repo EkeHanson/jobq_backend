@@ -8,12 +8,12 @@ from .views import (
     LatestPostsView
 )
 
-app_name = 'blog'
+app_name = 'insights'
 
 router = DefaultRouter()
-router.register(r'posts', BlogPostViewSet, basename='blog-post')
-router.register(r'subscribers', BlogSubscriberViewSet, basename='blog-subscriber')
-router.register(r'posts/(?P<post_slug>[^/.]+)/comments', BlogCommentViewSet, basename='blog-comment')
+router.register(r'posts', BlogPostViewSet, basename='insights-post')
+router.register(r'subscribers', BlogSubscriberViewSet, basename='insights-subscriber')
+router.register(r'posts/(?P<post_slug>[^/.]+)/comments', BlogCommentViewSet, basename='insights-comment')
 
 urlpatterns = [
     path('', include(router.urls)),

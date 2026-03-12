@@ -211,6 +211,8 @@ class LatestPostsView(generics.ListAPIView):
     
     def get_queryset(self):
         limit = int(self.request.query_params.get('limit', 10))
+        # Cap limit to prevent excessive queries
+        limit = min(limit, 50)
         return BlogPost.objects.filter(
             is_published=True
         ).select_related('author')[:limit]

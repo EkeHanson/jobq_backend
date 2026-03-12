@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django.utils import timezone
 
 from .models import Job, Company, ExtractionTask, JobBookmark
 from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSerializer, JobBookmarkSerializer
@@ -90,6 +91,51 @@ class JobViewSet(viewsets.ModelViewSet):
         bookmarks = JobBookmark.objects.filter(user=request.user).order_by('-created_at')
         serializer = JobBookmarkSerializer(bookmarks, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def save_application(self, request, pk=None):
+        """Save a job as an application for the current user"""
+        from apps.applications.models import Application
+        
+        job = self.get_object()
+        user = request.user
+        
+        # Check if already saved
+        existing = Application.objects.filter(
+            user=user,
+            job_title=job.title,
+            company_name=job.company.name,
+            deleted_at__isnull=True
+        ).first()
+        
+        if existing:
+            return Response(
+                {'detail': 'This job is already in your applications', 'application_id': existing.id},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get the status from request (default to 'saved')
+        application_status = request.data.get('status', 'saved')
+        
+        # Create application from job data
+        application = Application.objects.create(
+            user=user,
+            job_title=job.title,
+            company_name=job.company.name,
+            status=application_status,
+            description=job.description,
+            requirements=job.requirements,
+            applied_date=timezone.now().date() if application_status == 'applied' else None,
+        )
+        
+        return Response(
+            {
+                'status': 'application_saved',
+                'application_id': application.id,
+                'message': f'Application for {job.title} at {job.company.name} has been saved'
+            },
+            status=status.HTTP_201_CREATED
+        )
 
 
 class CompanyViewSet(viewsets.ModelViewSet):

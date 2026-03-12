@@ -174,9 +174,13 @@ class LoginView(generics.GenericAPIView):
 class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'patch', 'put']
 
     def get_object(self):
         return self.request.user
+    
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
 
 
 class LogoutView(generics.GenericAPIView):

@@ -25,6 +25,8 @@ class BlogPost(models.Model):
     content = models.TextField(help_text="Full article content (HTML or Markdown supported)")
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='career_advice')
     featured_image = models.URLField(blank=True, help_text="URL to the featured image")
+    author_display_picture = models.URLField(blank=True, help_text="URL to the author's display picture/avatar")
+    external_link = models.URLField(blank=True, help_text="Optional external link (for linking to external articles)")
     
     author = models.ForeignKey(
         get_user_model(), 
@@ -48,8 +50,8 @@ class BlogPost(models.Model):
     
     class Meta:
         ordering = ['-published_date', '-created_at']
-        verbose_name = 'Blog Post'
-        verbose_name_plural = 'Blog Posts'
+        verbose_name = 'Insight'
+        verbose_name_plural = 'Insights'
     
     def __str__(self):
         return self.title
@@ -94,8 +96,8 @@ class BlogSubscriber(models.Model):
     
     class Meta:
         ordering = ['-subscribed_date']
-        verbose_name = 'Blog Subscriber'
-        verbose_name_plural = 'Blog Subscribers'
+        verbose_name = 'Insight Subscriber'
+        verbose_name_plural = 'Insight Subscribers'
     
     def __str__(self):
         return self.email
@@ -118,8 +120,8 @@ class BlogComment(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'Blog Comment'
-        verbose_name_plural = 'Blog Comments'
+        verbose_name = 'Insight Comment'
+        verbose_name_plural = 'Insight Comments'
     
     def __str__(self):
         return f"Comment by {self.author_name} on {self.post.title}"

@@ -9,7 +9,7 @@ from .serializers import ApplicationSerializer, StatusHistorySerializer
 
 
 class ApplicationViewSet(viewsets.ModelViewSet):
-    queryset = Application.objects.all().order_by('-created_at')
+    queryset = Application.objects.select_related('user').prefetch_related('history').all().order_by('-created_at')
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -38,10 +38,10 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         """Get application statistics for current user"""
         qs = Application.objects.filter(user=request.user)
         total = qs.count()
-        by_status = {}
-        for app in qs:
-            status = app.status or 'unknown'
-            by_status[status] = by_status.get(status, 0) + 1
+        
+        # Use Django aggregation for efficient status counting - O(1) instead of O(n)
+        status_counts = qs.values('status').annotate(count=Count('id'))
+        by_status = {item['status'] or 'unknown': item['count'] for item in status_counts}
         
         total_companies = qs.values('company_name').distinct().count()
         

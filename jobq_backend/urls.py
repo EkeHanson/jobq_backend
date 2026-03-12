@@ -7,6 +7,7 @@ from apps.applications import views as app_views
 from apps.notifications import views as notification_views
 from apps.profiles import views as profile_views
 from apps.subscriptions import views as subscription_views
+from apps.ai import views as ai_views
 
 router = routers.DefaultRouter()
 router.register(r'jobs', job_views.JobViewSet, basename='job')
@@ -17,12 +18,13 @@ router.register(r'contact', notification_views.ContactMessageViewSet, basename='
 router.register(r'reviews', notification_views.ReviewViewSet, basename='review')
 router.register(r'profiles', profile_views.ProfileViewSet, basename='profile')
 router.register(r'subscription', subscription_views.SubscriptionViewSet, basename='subscription')
+router.register(r'ai/interview-prep', ai_views.InterviewPrepViewSet, basename='interview-prep')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/auth/', include('apps.users.urls')),
-    # Blog endpoints
-    path('api/v1/blog/', include('apps.blog.urls')),
+    # Insights (formerly Blog) endpoints
+    path('api/v1/insights/', include('apps.blog.urls')),
     # Custom views (must come before router includes)
     path('api/v1/jobs/extract/', job_views.JobExtractView.as_view(), name='job-extract'),
     path('api/v1/jobs/extract/status/<uuid:task_id>/', job_views.JobExtractStatusView.as_view(), name='job-extract-status'),
