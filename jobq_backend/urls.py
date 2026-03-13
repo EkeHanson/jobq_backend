@@ -12,7 +12,7 @@ from apps.ai import views as ai_views
 router = routers.DefaultRouter()
 router.register(r'jobs', job_views.JobViewSet, basename='job')
 router.register(r'companies', job_views.CompanyViewSet, basename='company')
-router.register(r'applications', app_views.ApplicationViewSet, basename='application')
+router.register(r'interviews', app_views.InterviewViewSet, basename='interview')
 router.register(r'notifications', notification_views.NotificationViewSet, basename='notification')
 router.register(r'contact', notification_views.ContactMessageViewSet, basename='contact')
 router.register(r'reviews', notification_views.ReviewViewSet, basename='review')
@@ -23,6 +23,8 @@ router.register(r'ai/interview-prep', ai_views.InterviewPrepViewSet, basename='i
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/auth/', include('apps.users.urls')),
+    # Applications endpoints
+    path('api/v1/', include('apps.applications.urls')),
     # Insights (formerly Blog) endpoints
     path('api/v1/insights/', include('apps.blog.urls')),
     # Custom views (must come before router includes)

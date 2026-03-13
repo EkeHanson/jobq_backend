@@ -254,3 +254,200 @@ def _generate_fallback_interview_prep(job_title, company_name):
             'tips': ['Check their website and social media']
         }
     }
+
+
+def calculate_job_match(user_skills, job_skills_text):
+    """Calculate match score between user skills and job requirements using AI.
+    
+    Args:
+        user_skills: List of user's skill names
+        job_skills_text: Job requirements/skills text
+    
+    Returns:
+        dict with match_score, matched_skills, missing_skills, recommendations
+    """
+    if not OpenAI:
+        return _calculate_match_fallback(user_skills, job_skills_text)
+    
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        return _calculate_match_fallback(user_skills, job_skills_text)
+    
+    client = OpenAI(api_key=api_key)
+    
+    # Parse job skills from text
+    job_skills_list = [s.strip() for s in job_skills_text.split(',')] if job_skills_text else []
+    user_skills_list = [s.strip() for s in user_skills] if user_skills else []
+    
+    prompt = f"""
+You are a job matching expert. Calculate the match score between a candidate's skills and job requirements.
+
+CANDIDATE SKILLS:
+{', '.join(user_skills_list) if user_skills_list else 'No skills listed'}
+
+JOB REQUIREMENTS:
+{job_skills_text if job_skills_text else 'No requirements provided'}
+
+Return a JSON object with:
+{{
+    "match_score": 0-100,
+    "matched_skills": ["skill1", "skill2"],
+    "missing_skills": ["skill3"],
+    "recommendations": ["recommendation1", "recommendation2"],
+    "analysis": "Brief analysis of the match"
+}}
+
+Only output the JSON object (no explanation).
+"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=1000,
+        )
+        content = response.choices[0].message.content
+        
+        # Clean up
+        content = content.strip()
+        if content.startswith('```json'):
+            content = content[7:]
+        if content.startswith('```'):
+            content = content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+        
+        import json
+        result = json.loads(content)
+        return result
+        
+    except Exception as e:
+        logger.error(f'Job match calculation failed: {e}')
+        return _calculate_match_fallback(user_skills, job_skills_text)
+
+
+def _calculate_match_fallback(user_skills, job_skills_text):
+    """Fallback simple matching without AI"""
+    user_skills_lower = [s.lower() for s in (user_skills or [])]
+    job_skills_list = [s.strip() for s in (job_skills_text or '').split(',')]
+    
+    matched = []
+    missing = []
+    
+    for skill in job_skills_list:
+        skill_lower = skill.lower().strip()
+        if any(skill_lower in user_skill or user_skill in skill_lower for user_skill in user_skills_lower):
+            matched.append(skill)
+        else:
+            missing.append(skill)
+    
+    total = len(job_skills_list) or 1
+    score = int((len(matched) / total) * 100)
+    
+    return {
+        'match_score': score,
+        'matched_skills': matched,
+        'missing_skills': missing,
+        'recommendations': [
+            'Add missing skills to your profile' if missing else 'Your skills match well!',
+            'Tailor your resume to highlight matched skills'
+        ],
+        'analysis': f'Matched {len(matched)} out of {len(job_skills_list)} skills'
+    }
+
+
+def optimize_resume(job_description, resume_text=''):
+    """Analyze and optimize resume for a job using AI.
+    
+    Args:
+        job_description: Job description text
+        resume_text: Current resume text (optional)
+    
+    Returns:
+        dict with missing_keywords, improvement_suggestions, resume_score
+    """
+    if not OpenAI:
+        return _optimize_resume_fallback(job_description)
+    
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        return _optimize_resume_fallback(job_description)
+    
+    client = OpenAI(api_key=api_key)
+    
+    prompt = f"""
+You are a resume optimization expert. Analyze the job description and provide recommendations to improve the resume.
+
+JOB DESCRIPTION:
+{job_description[:3000]}
+
+CURRENT RESUME:
+{resume_text[:1000] if resume_text else 'No resume provided'}
+
+Return a JSON object with:
+{{
+    "missing_keywords": ["keyword1", "keyword2"],
+    "improvement_suggestions": ["suggestion1", "suggestion2"],
+    "resume_score": 0-100,
+    "ats_friendly_score": 0-100,
+    "action_items": ["action1", "action2"]
+}}
+
+Only output the JSON object (no explanation).
+"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=1500,
+        )
+        content = response.choices[0].message.content
+        
+        # Clean up
+        content = content.strip()
+        if content.startswith('```json'):
+            content = content[7:]
+        if content.startswith('```'):
+            content = content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+        
+        import json
+        result = json.loads(content)
+        return result
+        
+    except Exception as e:
+        logger.error(f'Resume optimization failed: {e}')
+        return _optimize_resume_fallback(job_description)
+
+
+def _optimize_resume_fallback(job_description):
+    """Fallback resume optimization without AI"""
+    job_words = set(job_description.lower().split())
+    
+    # Common keywords to look for
+    common_keywords = ['experience', 'skills', 'team', 'project', 'lead', 'manage', 
+                       'develop', 'design', 'implement', 'test', 'analysis', 'communication']
+    
+    found = [kw for kw in common_keywords if kw in job_words]
+    missing = [kw for kw in common_keywords if kw not in job_words][:5]
+    
+    return {
+        'missing_keywords': missing,
+        'improvement_suggestions': [
+            'Quantify your achievements with numbers',
+            'Use action verbs to describe your experience',
+            'Tailor your summary to the job description'
+        ],
+        'resume_score': 60,
+        'ats_friendly_score': 70,
+        'action_items': [
+            'Add more relevant keywords from the job description',
+            'Ensure proper formatting for ATS systems'
+        ]
+    }

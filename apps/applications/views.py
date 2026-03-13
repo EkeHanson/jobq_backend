@@ -1,11 +1,12 @@
-from rest_framework import viewsets, generics, permissions
+from rest_framework import viewsets, generics, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Count
 from django.utils import timezone
+from django.db.models import Q
 
-from .models import Application, StatusHistory
-from .serializers import ApplicationSerializer, StatusHistorySerializer
+from .models import Application, StatusHistory, Interview
+from .serializers import ApplicationSerializer, StatusHistorySerializer, InterviewSerializer
 
 
 class ApplicationViewSet(viewsets.ModelViewSet):
@@ -105,3 +106,72 @@ class StatusHistoryView(generics.ListAPIView):
     def get_queryset(self):
         application_id = self.kwargs['pk']
         return StatusHistory.objects.filter(application_id=application_id)
+
+
+class FollowUpsView(generics.ListAPIView):
+    """View for getting follow-up reminders"""
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        today = timezone.now().date()
+        # Get applications with follow-up dates in the future or today
+        return Application.objects.filter(
+            user=self.request.user,
+            follow_up_date__isnull=False,
+            follow_up_date__lte=today + timezone.timedelta(days=7),  # Up to 7 days ahead
+            archived=False,
+            deleted_at__isnull=True
+        ).order_by('follow_up_date')
+
+    @action(detail=False, methods=['post'])
+    def mark_sent(self, request):
+        """Mark a follow-up as sent"""
+        application_id = request.data.get('application_id')
+        try:
+            application = Application.objects.get(id=application_id, user=request.user)
+            application.follow_up_sent = True
+            application.save()
+            return Response({'status': 'marked_as_sent'})
+        except Application.DoesNotExist:
+            return Response({'error': 'Application not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class InterviewViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing interviews"""
+    serializer_class = InterviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Interview.objects.filter(
+            application__user=self.request.user
+        ).select_related('application').order_by('-interview_date', '-created_at')
+    
+    def perform_create(self, serializer):
+        application_id = self.request.data.get('application')
+        application = Application.objects.get(id=application_id, user=self.request.user)
+        serializer.save(application=application)
+    
+    @action(detail=True, methods=['post'])
+    def update_outcome(self, request, pk=None):
+        """Update interview outcome"""
+        interview = self.get_object()
+        outcome = request.data.get('outcome')
+        if outcome in ['pending', 'passed', 'failed', 'cancelled']:
+            interview.outcome = outcome
+            interview.save()
+            return Response({'status': 'outcome_updated', 'outcome': outcome})
+        return Response({'error': 'Invalid outcome'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ApplicationByStatusView(generics.ListAPIView):
+    """View for getting applications grouped by status (for Kanban)"""
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Application.objects.filter(
+            user=self.request.user,
+            archived=False,
+            deleted_at__isnull=True
+        ).prefetch_related('history', 'interviews').order_by('-created_at')

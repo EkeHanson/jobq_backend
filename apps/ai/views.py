@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import InterviewPrep
 from .serializers import InterviewPrepSerializer, InterviewPrepCreateSerializer
-from .services import generate_interview_prep
+from .services import generate_interview_prep, calculate_job_match, optimize_resume
 
 # AI extraction helper
 from apps.ai.services import extract_job_data
@@ -126,3 +126,49 @@ class InterviewPrepViewSet(viewsets.ModelViewSet):
         
         output_serializer = InterviewPrepSerializer(interview_prep)
         return Response(output_serializer.data)
+
+
+class JobMatchView(APIView):
+    """API view for calculating job match score"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Calculate match score between user skills and job requirements"""
+        job_description = request.data.get('job_description', '')
+        job_skills = request.data.get('job_skills', '')
+        
+        # Get user's skills from profile
+        user_skills = []
+        try:
+            from apps.profiles.models import Profile
+            profile = Profile.objects.filter(user=request.user).first()
+            if profile:
+                user_skills = list(profile.skills.values_list('name', flat=True))
+        except Exception:
+            pass
+        
+        # Calculate match
+        result = calculate_job_match(user_skills, job_skills or job_description)
+        
+        return Response(result)
+
+
+class ResumeOptimizerView(APIView):
+    """API view for resume optimization"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Analyze and optimize resume for a job"""
+        job_description = request.data.get('job_description', '')
+        resume_text = request.data.get('resume_text', '')
+        
+        if not job_description:
+            return Response(
+                {'error': 'Job description is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Optimize resume
+        result = optimize_resume(job_description, resume_text)
+        
+        return Response(result)

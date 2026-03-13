@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Application, StatusHistory
+from .models import Application, StatusHistory, Interview
 from .upload_utils import upload_resume, delete_resume
 
 
@@ -9,16 +9,26 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         fields = ['id', 'old_status', 'new_status', 'changed_at', 'notes']
 
 
+class InterviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Interview
+        fields = ['id', 'application', 'interview_date', 'interview_time', 'interview_type', 
+                  'interviewer', 'location', 'notes', 'outcome', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+
 class ApplicationSerializer(serializers.ModelSerializer):
     history = StatusHistorySerializer(many=True, read_only=True)
+    interviews = InterviewSerializer(many=True, read_only=True)
     resume_file = serializers.FileField(write_only=True, required=False, help_text="Resume file to upload (will be compressed)")
 
     class Meta:
         model = Application
         fields = ['id', 'user', 'job_title', 'company_name', 'status', 'applied_date', 'deadline', 'notes', 
                   'description', 'requirements', 'resume', 'recruiter_questions', 'resume_file',
-                  'history', 'archived', 'archived_at', 'deleted_at', 'created_at', 'updated_at']
-        read_only_fields = ['user', 'created_at', 'updated_at', 'resume', 'archived', 'archived_at', 'deleted_at']
+                  'source', 'follow_up_date', 'follow_up_sent',
+                  'history', 'interviews', 'archived', 'archived_at', 'deleted_at', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at', 'resume', 'archived', 'archived_at', 'deleted_at', 'follow_up_sent']
 
     def create(self, validated_data):
         user = self.context['request'].user

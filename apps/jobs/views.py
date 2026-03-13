@@ -198,3 +198,67 @@ class JobExtractResultView(generics.RetrieveAPIView):
     serializer_class = ExtractionTaskSerializer
     lookup_field = 'task_id'
     permission_classes = [permissions.IsAuthenticated]
+
+
+class JobAggregationView(generics.GenericAPIView):
+    """API view for aggregating jobs from external sources"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        """Get aggregated jobs from external sources"""
+        query = request.query_params.get('query', '')
+        location = request.query_params.get('location', '')
+        num_jobs = int(request.query_params.get('limit', 20))
+        source = request.query_params.get('source', 'all')  # all, remotive, adzuna, jooble
+        
+        from .aggregation import JobAggregationService
+        
+        if source == 'remotive':
+            jobs = JobAggregationService.fetch_remotive_jobs(num_jobs=num_jobs)
+        elif source == 'adzuna':
+            jobs = JobAggregationService.fetch_adzuna_jobs(query, location, num_jobs)
+        elif source == 'jooble':
+            jobs = JobAggregationService.fetch_jooble_jobs(query, location, num_jobs)
+        else:
+            jobs = JobAggregationService.fetch_all_jobs(query, location, num_jobs)
+        
+        return Response({
+            'count': len(jobs),
+            'results': jobs
+        })
+    
+    def post(self, request):
+        """Save aggregated job to local database"""
+        job_data = request.data
+        
+        if not request.user.is_authenticated:
+            return Response(
+                {'detail': 'Authentication required to save jobs'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Get or create company
+        company_name = job_data.get('company', 'Unknown Company')
+        company, _ = Company.objects.get_or_create(
+            name=company_name,
+            defaults={'website': ''}
+        )
+        
+        # Create job
+        job = Job.objects.create(
+            title=job_data.get('title', 'Untitled'),
+            company=company,
+            location=job_data.get('location', ''),
+            description=job_data.get('description', ''),
+            requirements=job_data.get('requirements', ''),
+            skills=job_data.get('skills', ''),
+            job_type=job_data.get('job_type', 'Full-time'),
+            salary_min=job_data.get('salary_min'),
+            salary_max=job_data.get('salary_max'),
+            salary_currency=job_data.get('salary_currency', 'USD'),
+            application_link=job_data.get('application_link', ''),
+            created_by=request.user
+        )
+        
+        serializer = JobSerializer(job)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

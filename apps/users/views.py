@@ -661,3 +661,181 @@ class UserManagementView(generics.GenericAPIView):
                 'detail': f'User {user.email} has been unsuspended',
                 'user': UserSerializer(user).data
             })
+
+
+class PublicProfileView(generics.GenericAPIView):
+    """API view for managing public profile (authenticated)"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user's public profile settings"""
+        profile, created = PublicProfile.objects.get_or_create(user=request.user)
+        stats = profile.get_stats()
+        return Response({
+            'public_slug': profile.public_slug,
+            'is_public': profile.is_public,
+            'show_applications_count': profile.show_applications_count,
+            'show_interviews_count': profile.show_interviews_count,
+            'show_offers_count': profile.show_offers_count,
+            'show_success_rate': profile.show_success_rate,
+            'display_name': profile.display_name,
+            'share_url': f'/public/{profile.public_slug}' if profile.is_public else None,
+            'stats': stats,
+        })
+    
+    def patch(self, request):
+        """Update public profile settings"""
+        profile, created = PublicProfile.objects.get_or_create(user=request.user)
+        
+        profile.is_public = request.data.get('is_public', profile.is_public)
+        profile.show_applications_count = request.data.get('show_applications_count', profile.show_applications_count)
+        profile.show_interviews_count = request.data.get('show_interviews_count', profile.show_interviews_count)
+        profile.show_offers_count = request.data.get('show_offers_count', profile.show_offers_count)
+        profile.show_success_rate = request.data.get('show_success_rate', profile.show_success_rate)
+        
+        if request.data.get('display_name'):
+            profile.display_name = request.data['display_name']
+        
+        if request.data.get('public_slug'):
+            # Check if slug is taken
+            existing = PublicProfile.objects.filter(public_slug=request.data['public_slug']).exclude(user=request.user)
+            if existing:
+                return Response(
+                    {'detail': 'This URL is already taken'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            profile.public_slug = request.data['public_slug']
+        
+        profile.save()
+        
+        return Response({
+            'message': 'Public profile updated',
+            'public_slug': profile.public_slug,
+            'is_public': profile.is_public,
+            'share_url': f'/public/{profile.public_slug}' if profile.is_public else None
+        })
+
+
+class PublicProfileDetailView(generics.GenericAPIView):
+    """Public view for accessing public profiles (no auth required)"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, slug):
+        """Get public profile by slug"""
+        try:
+            profile = PublicProfile.objects.get(public_slug=slug, is_public=True)
+        except PublicProfile.DoesNotExist:
+            return Response(
+                {'detail': 'Public profile not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        stats = profile.get_stats()
+        
+        # Filter what to show based on settings
+        response_data = {}
+        response_data['stats'] = {
+            'total_applications': stats['total_applications'],
+            'interviews': stats['interviews'],
+            'offers': stats['offers'],
+            'success_rate': stats['success_rate'],
+        }
+        
+        response_data['display_name'] = profile.display_name or profile.user.username
+        response_data['show_applications_count'] = profile.show_applications_count
+        response_data['show_interviews_count'] = profile.show_interviews_count
+        response_data['show_offers_count'] = profile.show_offers_count
+        response_data['show_success_rate'] = profile.show_success_rate
+        response_data['updated_at'] = profile.updated_at
+        
+        return Response(response_data)
+
+
+class JobSearchGoalView(generics.GenericAPIView):
+    """API view for managing job search goals"""
+    serializer_class = None
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user's job search goal"""
+        from .models import JobSearchGoal
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        today = timezone.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        
+        goal, created = JobSearchGoal.objects.get_or_create(
+            user=request.user,
+            defaults={'week_start_date': week_start}
+        )
+        
+        # Check and reset if new week
+        goal.check_and_reset_week()
+        
+        return Response({
+            'id': goal.id,
+            'weekly_target': goal.weekly_target,
+            'applications_this_week': goal.applications_this_week,
+            'progress_percentage': goal.get_progress_percentage(),
+            'week_start_date': goal.week_start_date,
+        })
+    
+    def post(self, request):
+        """Create a new job search goal"""
+        from .models import JobSearchGoal
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        today = timezone.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        
+        # Check if goal already exists
+        goal = JobSearchGoal.objects.filter(user=request.user).first()
+        if goal:
+            return Response(
+                {'detail': 'Goal already exists. Use PATCH to update.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        weekly_target = request.data.get('weekly_target', 10)
+        
+        goal = JobSearchGoal.objects.create(
+            user=request.user,
+            weekly_target=weekly_target,
+            applications_this_week=0,
+            week_start_date=week_start
+        )
+        
+        return Response({
+            'id': goal.id,
+            'weekly_target': goal.weekly_target,
+            'applications_this_week': goal.applications_this_week,
+            'progress_percentage': goal.get_progress_percentage(),
+            'week_start_date': goal.week_start_date,
+        }, status=status.HTTP_201_CREATED)
+    
+    def patch(self, request):
+        """Update job search goal"""
+        from .models import JobSearchGoal
+        
+        goal = JobSearchGoal.objects.filter(user=request.user).first()
+        if not goal:
+            return Response(
+                {'detail': 'Goal not found. Use POST to create.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        weekly_target = request.data.get('weekly_target')
+        if weekly_target is not None:
+            goal.weekly_target = weekly_target
+        
+        goal.save()
+        
+        return Response({
+            'id': goal.id,
+            'weekly_target': goal.weekly_target,
+            'applications_this_week': goal.applications_this_week,
+            'progress_percentage': goal.get_progress_percentage(),
+            'week_start_date': goal.week_start_date,
+        })
