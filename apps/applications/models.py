@@ -17,6 +17,8 @@ class Application(models.Model):
     SOURCE_CHOICES = [
         ('linkedin', 'LinkedIn'),
         ('indeed', 'Indeed'),
+        ('jobberman', 'Jobberman'),
+        ('glassdoor', 'Glassdoor'),
         ('company_website', 'Company Website'),
         ('referral', 'Referral'),
         ('recruiter', 'Recruiter'),

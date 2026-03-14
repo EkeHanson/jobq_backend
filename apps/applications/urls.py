@@ -7,6 +7,7 @@ router.register(r'applications', ApplicationViewSet, basename='application')
 router.register(r'interviews', InterviewViewSet, basename='interview')
 
 urlpatterns = [
-    path('', include(router.urls)),
+    # Custom views (must come before router includes)
     path('applications/followups/', FollowUpsView.as_view(), name='follow-ups'),
+    path('', include(router.urls)),
 ]
