@@ -17,7 +17,7 @@ from .serializers import (
     TwoFactorVerifySerializer,
     TwoFactorEnableSerializer,
 )
-from .models import PasswordResetToken, TwoFactorToken
+from .models import PasswordResetToken, TwoFactorToken, PublicProfile
 
 User = get_user_model()
 
