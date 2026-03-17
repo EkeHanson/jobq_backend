@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.ai',
     'apps.profiles',
     'apps.blog',
+    'apps.analytics',
 ]
 
 MIDDLEWARE = [

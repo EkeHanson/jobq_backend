@@ -27,6 +27,8 @@ urlpatterns = [
     path('api/v1/', include('apps.applications.urls')),
     # Insights (formerly Blog) endpoints
     path('api/v1/insights/', include('apps.blog.urls')),
+    # Analytics endpoints
+    path('api/v1/analytics/', include('apps.analytics.urls')),
     # Custom views (must come before router includes)
     path('api/v1/jobs/extract/', job_views.JobExtractView.as_view(), name='job-extract'),
     path('api/v1/jobs/extract/status/<uuid:task_id>/', job_views.JobExtractStatusView.as_view(), name='job-extract-status'),

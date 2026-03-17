@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 from .models import Notification, ContactMessage, Review
 from .serializers import NotificationSerializer, ContactMessageSerializer, ReviewSerializer
@@ -49,10 +50,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        # Only show published reviews to non-admins
+        # Only show published reviews to non-admins, but show own unpublished reviews
         qs = super().get_queryset()
         if not self.request.user.is_staff:
-            qs = qs.filter(published=True)
+            # Show published reviews OR user's own unpublished reviews
+            qs = qs.filter(
+                Q(published=True) | Q(user=self.request.user)
+            )
         return qs
 
     def perform_create(self, serializer):
