@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Application, StatusHistory, Interview
+from .models import Application, StatusHistory, Interview, BulkImportTask
 from .upload_utils import upload_resume, delete_resume
 
 
@@ -15,6 +15,15 @@ class InterviewSerializer(serializers.ModelSerializer):
         fields = ['id', 'application', 'interview_date', 'interview_time', 'interview_type', 
                   'interviewer', 'location', 'notes', 'outcome', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
+
+
+class BulkImportTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BulkImportTask
+        fields = ['task_id', 'file_name', 'total_rows', 'processed_rows', 'successful_rows', 
+                  'failed_rows', 'errors', 'status', 'created_at', 'updated_at', 'completed_at']
+        read_only_fields = ['task_id', 'user', 'total_rows', 'processed_rows', 'successful_rows', 
+                           'failed_rows', 'errors', 'status', 'created_at', 'updated_at', 'completed_at']
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
