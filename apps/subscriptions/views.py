@@ -25,8 +25,17 @@ def public_subscription_plans(request):
     return Response(serializer.data)
 
 
-class SubscriptionViewSet(viewsets.ViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+class SubscriptionViewSet(viewsets.ModelViewSet):
+    queryset = SubscriptionPlan.objects.all()
+    serializer_class = SubscriptionPlanSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        if self.action in ['me', 'upgrade', 'cancel', 'resume', 'list_payment_methods', 'add_payment_method', 'invoices', 'download', 'limits']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
 
     def list(self, request):
         # return available plans
@@ -38,6 +47,12 @@ class SubscriptionViewSet(viewsets.ViewSet):
     def me(self, request):
         sub, _ = Subscription.objects.get_or_create(user=request.user)
         serializer = SubscriptionSerializer(sub)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAdminUser], url_path='admin-subscriptions')
+    def admin_subscriptions(self, request):
+        subscriptions = Subscription.objects.select_related('user', 'plan').all()
+        serializer = SubscriptionSerializer(subscriptions, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
@@ -143,6 +158,16 @@ class SubscriptionViewSet(viewsets.ViewSet):
         if action_type == 'create_application':
             current_count = Application.objects.filter(user=request.user).count()
             max_allowed = sub.plan.max_applications
+
+            # 0 means unlimited
+            if max_allowed == 0:
+                return Response({
+                    'allowed': True,
+                    'current': current_count,
+                    'limit': 0,
+                    'reason': None,
+                })
+
             allowed = current_count < max_allowed
             return Response({
                 'allowed': allowed,
@@ -154,6 +179,16 @@ class SubscriptionViewSet(viewsets.ViewSet):
         elif action_type == 'create_profile':
             current_count = Profile.objects.filter(user=request.user).count()
             max_allowed = sub.plan.max_profiles
+
+            # 0 means unlimited
+            if max_allowed == 0:
+                return Response({
+                    'allowed': True,
+                    'current': current_count,
+                    'limit': 0,
+                    'reason': None,
+                })
+
             allowed = current_count < max_allowed
             return Response({
                 'allowed': allowed,

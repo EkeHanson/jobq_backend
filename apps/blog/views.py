@@ -20,6 +20,13 @@ class BlogPostViewSet(viewsets.ModelViewSet):
     
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = 'slug'
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        if self.action in ['all', 'feature']:
+            return [IsAdminUser()]
+        return [IsAdminUser()]
     
     def get_serializer_class(self):
         if self.action == 'list':

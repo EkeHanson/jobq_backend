@@ -25,6 +25,13 @@ class JobViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     pagination_class = JobPagination
     filter_backends = [SearchFilter, OrderingFilter]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        if self.action in ['bookmark', 'unbookmark', 'bookmarks', 'save_application']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
     search_fields = ['title', 'description', 'company__name', 'location']
     ordering_fields = ['posted_at', 'title']
     ordering = ['-posted_at']  # LIFO - newest first
@@ -141,7 +148,11 @@ class JobViewSet(viewsets.ModelViewSet):
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all().order_by('name')
     serializer_class = CompanySerializer
-    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
 
 
 class JobExtractView(generics.CreateAPIView):

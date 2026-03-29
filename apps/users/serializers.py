@@ -8,7 +8,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone', 'location', 'is_active', 'is_suspended', 'suspension_reason', 'suspended_at', 'is_2fa_enabled', 'date_joined', 'last_login', 'email_notifications', 'push_notifications', 'weekly_summary', 'allow_data_collection']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone', 'location', 'is_active', 'is_suspended', 'suspension_reason', 'suspended_at', 'is_2fa_enabled', 'date_joined', 'last_login', 'is_staff', 'is_superuser', 'email_notifications', 'push_notifications', 'weekly_summary', 'allow_data_collection']
         extra_kwargs = {
             'username': {'required': False},
             'email': {'required': False},

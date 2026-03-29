@@ -11,10 +11,16 @@ from .serializers import NotificationSerializer, ContactMessageSerializer, Revie
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all().order_by('-created_at')
     serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
 
     def get_queryset(self):
         user = self.request.user
+        if user.is_staff or user.is_superuser:
+            return self.queryset
         return self.queryset.filter(user=user)
 
     @action(detail=True, methods=['post'])

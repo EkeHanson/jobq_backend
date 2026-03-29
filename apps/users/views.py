@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
 
 from .serializers import (
     UserSerializer, 
@@ -618,49 +619,69 @@ class UserManagementView(generics.GenericAPIView):
         })
     
     def post(self, request, *args, **kwargs):
-        """Suspend or unsuspend a user"""
-        user_id = request.data.get('user_id')
-        action = request.data.get('action')  # 'suspend' or 'unsuspend'
-        reason = request.data.get('reason', '')
+        """Create a new user or suspend/unsuspend a user"""
+        action = request.data.get('action')  # 'suspend' or 'unsuspend' or None for create
         
-        if not user_id:
-            return Response(
-                {'detail': 'user_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # If action is provided, handle suspend/unsuspend
+        if action:
+            user_id = request.data.get('user_id')
+            reason = request.data.get('reason', '')
+            
+            if not user_id:
+                return Response(
+                    {'detail': 'user_id is required for suspend/unsuspend actions'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if action not in ['suspend', 'unsuspend']:
+                return Response(
+                    {'detail': 'action must be either "suspend" or "unsuspend"'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response(
+                    {'detail': 'User not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            if action == 'suspend':
+                user.is_suspended = True
+                user.suspension_reason = reason or 'Suspended by admin'
+                user.suspended_at = timezone.now()
+                user.save()
+                return Response({
+                    'detail': f'User {user.email} has been suspended',
+                    'user': UserSerializer(user).data
+                })
+            else:
+                user.is_suspended = False
+                user.suspension_reason = ''
+                user.suspended_at = None
+                user.save()
+                return Response({
+                    'detail': f'User {user.email} has been unsuspended',
+                    'user': UserSerializer(user).data
+                })
         
-        if action not in ['suspend', 'unsuspend']:
-            return Response(
-                {'detail': 'action must be either "suspend" or "unsuspend"'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # If no action, handle user creation
+        serializer = RegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
+            user = serializer.save()
+            return Response({
+                'detail': 'User created successfully',
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
             return Response(
-                {'detail': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
+                {'detail': f'Failed to create user: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        
-        if action == 'suspend':
-            user.is_suspended = True
-            user.suspension_reason = reason or 'Suspended by admin'
-            user.suspended_at = timezone.now()
-            user.save()
-            return Response({
-                'detail': f'User {user.email} has been suspended',
-                'user': UserSerializer(user).data
-            })
-        else:
-            user.is_suspended = False
-            user.suspension_reason = ''
-            user.suspended_at = None
-            user.save()
-            return Response({
-                'detail': f'User {user.email} has been unsuspended',
-                'user': UserSerializer(user).data
-            })
 
 
 class PublicProfileView(generics.GenericAPIView):

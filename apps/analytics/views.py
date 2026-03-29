@@ -71,14 +71,14 @@ class TrackPageView(APIView):
                 'browser': browser,
                 'os': os,
                 'referrer': referrer,
-                'is_new_visitor': created,
+                'is_new_visitor': True,
             }
         )
         
         # Update last seen
         session.last_seen = timezone.now()
-        if not session.is_new_visitor and created:
-            session.is_new_visitor = False
+        if created:
+            session.is_new_visitor = True
         session.save()
         
         # Create page view
