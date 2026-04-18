@@ -684,6 +684,15 @@ class UserManagementView(generics.GenericAPIView):
             )
 
 
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """View for individual user operations (admin only)"""
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser]  # Only admins can access this
+    lookup_field = 'id'
+    lookup_url_kwarg = 'user_id'
+
+
 class PublicProfileView(generics.GenericAPIView):
     """API view for managing public profile (authenticated)"""
     permission_classes = [permissions.IsAuthenticated]
