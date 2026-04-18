@@ -87,7 +87,7 @@ class BlogSubscriberViewSet(viewsets.ModelViewSet):
     
     serializer_class = BlogSubscriberSerializer
     permission_classes = [IsAdminUser]
-    lookup_field = 'email'
+    # lookup_field = 'email'  # Temporarily removed for debugging
     
     def get_queryset(self):
         queryset = BlogSubscriber.objects.all()
@@ -99,6 +99,12 @@ class BlogSubscriberViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=is_active)
         
         return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """List all subscribers"""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def subscribe(self, request):
