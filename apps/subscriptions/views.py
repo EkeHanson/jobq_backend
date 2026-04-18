@@ -262,11 +262,109 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         sub.ai_pastes_used_this_month += 1
         sub.save()
         
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser], url_path='admin-subscribe-user')
+    def admin_subscribe_user(self, request):
+        """
+        Admin endpoint to subscribe a user to a plan
+        """
+        user_id = request.data.get('user_id')
+        plan_id = request.data.get('plan_id')
+
+        if not user_id or not plan_id:
+            return Response({'error': 'user_id and plan_id are required'}, status=400)
+
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            plan = SubscriptionPlan.objects.get(id=plan_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+        except SubscriptionPlan.DoesNotExist:
+            return Response({'error': 'Plan not found'}, status=404)
+
+        # Get or create subscription
+        sub, created = Subscription.objects.get_or_create(user=user)
+        sub.plan = plan
+        sub.active = True
+        sub.started_at = timezone.now()
+        sub.canceled_at = None
+        sub.ai_pastes_used_this_month = 0
+        sub.last_usage_reset = timezone.now()
+        sub.save()
+
+        serializer = SubscriptionSerializer(sub)
         return Response({
-            'allowed': True,
-            'pastes_used': sub.ai_pastes_used_this_month,
-            'pastes_remaining': sub.plan.max_ai_pastes - sub.ai_pastes_used_this_month,
+            'subscription': serializer.data,
+            'message': f'User {user.username} subscribed to {plan.name}',
+            'created': created
         })
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser], url_path='admin-change-plan')
+    def admin_change_plan(self, request):
+        """
+        Admin endpoint to change a user's subscription plan
+        """
+        user_id = request.data.get('user_id')
+        plan_id = request.data.get('plan_id')
+
+        if not user_id or not plan_id:
+            return Response({'error': 'user_id and plan_id are required'}, status=400)
+
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            plan = SubscriptionPlan.objects.get(id=plan_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+        except SubscriptionPlan.DoesNotExist:
+            return Response({'error': 'Plan not found'}, status=404)
+
+        try:
+            sub = Subscription.objects.get(user=user)
+            old_plan = sub.plan.name if sub.plan else 'No plan'
+            sub.plan = plan
+            sub.save()
+
+            serializer = SubscriptionSerializer(sub)
+            return Response({
+                'subscription': serializer.data,
+                'message': f'User {user.username} plan changed from {old_plan} to {plan.name}'
+            })
+        except Subscription.DoesNotExist:
+            return Response({'error': 'User has no subscription to change'}, status=404)
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser], url_path='admin-cancel-subscription')
+    def admin_cancel_subscription(self, request):
+        """
+        Admin endpoint to cancel a user's subscription
+        """
+        user_id = request.data.get('user_id')
+
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=400)
+
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        try:
+            sub = Subscription.objects.get(user=user)
+            sub.active = False
+            sub.canceled_at = timezone.now()
+            sub.save()
+
+            serializer = SubscriptionSerializer(sub)
+            return Response({
+                'subscription': serializer.data,
+                'message': f'User {user.username} subscription canceled'
+            })
+        except Subscription.DoesNotExist:
+            return Response({'error': 'User has no subscription to cancel'}, status=404)
 
 
 class InvoiceListView(generics.GenericAPIView):
