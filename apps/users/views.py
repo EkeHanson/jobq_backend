@@ -1,4 +1,5 @@
 from datetime import timedelta
+import time
 
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -66,6 +67,7 @@ class LoginView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        start_time = time.perf_counter()
         # print(f"\n[LOGIN VIEW] ========== LOGIN REQUEST RECEIVED ==========")
         # print(f"[LOGIN VIEW] Request method: {request.method}")
         # print(f"[LOGIN VIEW] Request path: {request.path}")
@@ -134,6 +136,8 @@ class LoginView(generics.GenericAPIView):
                 )
             
             # Return response indicating 2FA is required
+            elapsed = time.perf_counter() - start_time
+            print(f"[LOGIN TIMING] 2FA login request for '{identifier}' completed in {elapsed:.2f}s")
             return Response(
                 {
                     'require_2fa': True,
@@ -162,6 +166,8 @@ class LoginView(generics.GenericAPIView):
         refresh.lifetime = refresh_token_lifetime
         
         user_data = UserSerializer(user).data
+        elapsed = time.perf_counter() - start_time
+        print(f"[LOGIN TIMING] login request for '{identifier}' completed in {elapsed:.2f}s")
 
         return Response(
             {
