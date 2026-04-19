@@ -370,3 +370,48 @@ def process_bulk_import(task, file_obj):
         'successful': successful,
         'failed': task.failed_rows
     }
+
+
+class FollowUpsView(generics.ListAPIView):
+    """View for getting applications that need follow-up reminders"""
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        return Application.objects.filter(
+            user=self.request.user,
+            follow_up_date__isnull=False,
+            follow_up_date__gte=today,  # Upcoming or today
+            follow_up_sent=False,  # Not sent yet
+            archived=False,
+            deleted_at__isnull=True
+        ).order_by('follow_up_date', 'company_name')
+
+
+class MarkFollowUpSentView(generics.UpdateAPIView):
+    """View for marking a follow-up as sent"""
+    queryset = Application.objects.all()
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Application.objects.filter(user=self.request.user)
+    
+    def update(self, request, *args, **kwargs):
+        application = self.get_object()
+        application.follow_up_sent = True
+        application.save()
+        return Response({'status': 'follow_up_marked_sent'})
+
+
+class BulkImportStatusView(generics.RetrieveAPIView):
+    """View for checking bulk import status"""
+    queryset = BulkImportTask.objects.all()
+    serializer_class = BulkImportTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return BulkImportTask.objects.filter(user=self.request.user)
