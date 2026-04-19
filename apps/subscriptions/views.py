@@ -33,7 +33,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
-        if self.action in ['me', 'upgrade', 'cancel', 'resume', 'list_payment_methods', 'add_payment_method', 'invoices', 'download', 'limits']:
+        if self.action in ['me', 'upgrade', 'cancel', 'resume', 'list_payment_methods', 'add_payment_method', 'invoices', 'download', 'limits', 'check_limit', 'record_ai_paste']:
             return [permissions.IsAuthenticated()]
         return [permissions.IsAdminUser()]
 
@@ -45,7 +45,18 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def me(self, request):
-        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        sub, created = Subscription.objects.get_or_create(user=request.user)
+        
+        # If subscription was just created, assign free plan
+        if created:
+            free_plan = SubscriptionPlan.objects.filter(name='Free', is_active=True).first()
+            if free_plan:
+                sub.plan = free_plan
+                sub.active = True
+                sub.started_at = timezone.now()
+                sub.last_usage_reset = timezone.now()
+                sub.save()
+        
         serializer = SubscriptionSerializer(sub)
         return Response(serializer.data)
 
@@ -106,7 +117,17 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         """
         Get current user's subscription limits and usage
         """
-        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        sub, created = Subscription.objects.get_or_create(user=request.user)
+        
+        # If subscription was just created, assign free plan
+        if created:
+            free_plan = SubscriptionPlan.objects.filter(name='Free', is_active=True).first()
+            if free_plan:
+                sub.plan = free_plan
+                sub.active = True
+                sub.started_at = timezone.now()
+                sub.last_usage_reset = timezone.now()
+                sub.save()
         
         # Get current counts
         profile_count = Profile.objects.filter(user=request.user).count()
@@ -146,7 +167,17 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         """
         action_type = request.data.get('action_type')  # 'create_application', 'create_profile', 'use_ai_paste'
         
-        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        sub, created = Subscription.objects.get_or_create(user=request.user)
+        
+        # If subscription was just created, assign free plan
+        if created:
+            free_plan = SubscriptionPlan.objects.filter(name='Free', is_active=True).first()
+            if free_plan:
+                sub.plan = free_plan
+                sub.active = True
+                sub.started_at = timezone.now()
+                sub.last_usage_reset = timezone.now()
+                sub.save()
         
         if not sub.active or not sub.plan:
             return Response({
@@ -233,7 +264,17 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         """
         Record an AI paste usage
         """
-        sub, _ = Subscription.objects.get_or_create(user=request.user)
+        sub, created = Subscription.objects.get_or_create(user=request.user)
+        
+        # If subscription was just created, assign free plan
+        if created:
+            free_plan = SubscriptionPlan.objects.filter(name='Free', is_active=True).first()
+            if free_plan:
+                sub.plan = free_plan
+                sub.active = True
+                sub.started_at = timezone.now()
+                sub.last_usage_reset = timezone.now()
+                sub.save()
         
         if not sub.active or not sub.plan:
             return Response({'error': 'No active subscription'}, status=403)

@@ -218,6 +218,22 @@ class CookieTokenRefreshView(generics.GenericAPIView):
 
         serializer = self.get_serializer(data={'refresh': refresh_token})
         serializer.is_valid(raise_exception=True)
+        
+        # Get the user from the refresh token
+        refresh = RefreshToken(refresh_token)
+        user_id = refresh.payload.get('user_id')
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'Invalid refresh token.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if user account is suspended
+        if user.is_suspended:
+            return Response(
+                {'detail': 'Your account has been suspended. Please contact support for assistance.'},
+                status=403
+            )
+        
         return Response(serializer.validated_data)
 
 
@@ -276,6 +292,13 @@ class GoogleLoginView(generics.GenericAPIView):
                 )
                 user.is_active = True
                 user.save()
+            
+            # Check if user account is suspended
+            if user.is_suspended:
+                return Response(
+                    {'detail': 'Your account has been suspended. Please contact support for assistance.'},
+                    status=403
+                )
             
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
