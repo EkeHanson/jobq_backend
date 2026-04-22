@@ -172,3 +172,11 @@ class TwoFactorEnableSerializer(serializers.Serializer):
         
         self.user = user
         return data
+
+
+class BulkUserCreateSerializer(serializers.Serializer):
+    users = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1,
+        max_length=100
+    )

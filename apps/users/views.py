@@ -18,6 +18,7 @@ from .serializers import (
     PasswordResetSerializer,
     TwoFactorVerifySerializer,
     TwoFactorEnableSerializer,
+    BulkUserCreateSerializer,
 )
 from .models import PasswordResetToken, TwoFactorToken, PublicProfile
 
@@ -711,6 +712,164 @@ class UserManagementView(generics.GenericAPIView):
                 {'detail': f'Failed to create user: {str(e)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    
+    def put(self, request):
+        """Bulk create multiple users"""
+        serializer = BulkUserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        users_data = serializer.validated_data['users']
+        created_users = []
+        errors = []
+        
+        for idx, user_data in enumerate(users_data):
+            try:
+                username = user_data.get('username')
+                email = user_data.get('email')
+                password = user_data.get('password', 'ChangeMe123!')
+                first_name = user_data.get('first_name', '')
+                last_name = user_data.get('last_name', '')
+                is_staff = user_data.get('is_staff', False)
+                is_superuser = user_data.get('is_superuser', False)
+                
+                if not email:
+                    errors.append({
+                        'index': idx,
+                        'error': 'email is required',
+                        'data': user_data
+                    })
+                    continue
+                
+                if User.objects.filter(email__iexact=email).exists():
+                    errors.append({
+                        'index': idx,
+                        'error': f'User with email {email} already exists',
+                        'data': user_data
+                    })
+                    continue
+                
+                if not username:
+                    username = email.split('@')[0]
+                
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                )
+                user.is_staff = is_staff
+                user.is_superuser = is_superuser
+                user.save()
+                
+                created_users.append(user)
+            except Exception as e:
+                errors.append({
+                    'index': idx,
+                    'error': str(e),
+                    'data': user_data
+                })
+        
+        if created_users:
+            users_serializer = UserSerializer(created_users, many=True)
+            return Response({
+                'created': len(created_users),
+                'users': users_serializer.data,
+                'errors': errors if errors else None
+            }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)
+        
+        return Response(
+                {'detail': 'No users were created', 'errors': errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class BulkUserCreateView(generics.GenericAPIView):
+    """Dedicated view for bulk user creation"""
+    serializer_class = BulkUserCreateSerializer
+    permission_classes = [permissions.IsAdminUser]
+    
+    def post(self, request):
+        """Bulk create multiple users"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        users_data = serializer.validated_data['users']
+        created_users = []
+        errors = []
+        
+        for idx, user_data in enumerate(users_data):
+            try:
+                username = user_data.get('username')
+                email = user_data.get('email')
+                password = user_data.get('password', 'ChangeMe123!')
+                first_name = user_data.get('first_name', '')
+                last_name = user_data.get('last_name', '')
+                is_staff = user_data.get('is_staff', False)
+                is_superuser = user_data.get('is_superuser', False)
+                
+                if not email:
+                    errors.append({
+                        'index': idx,
+                        'error': 'email is required',
+                        'data': user_data
+                    })
+                    continue
+                
+                if User.objects.filter(email__iexact=email).exists():
+                    errors.append({
+                        'index': idx,
+                        'error': f'User with email {email} already exists',
+                        'data': user_data
+                    })
+                    continue
+                
+                if not username:
+                    username = email.split('@')[0]
+                
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                )
+                user.is_staff = is_staff
+                user.is_superuser = is_superuser
+                user.save()
+                
+                created_users.append(user)
+            except Exception as e:
+                errors.append({
+                    'index': idx,
+                    'error': str(e),
+                    'data': user_data
+                })
+        
+        if created_users:
+            users_serializer = UserSerializer(created_users, many=True)
+            return Response({
+                'created': len(created_users),
+                'users': users_serializer.data,
+                'errors': errors if errors else None
+            }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)
+        
+        return Response(
+            {'detail': 'No users were created', 'errors': errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):

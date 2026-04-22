@@ -64,3 +64,11 @@ class JobBookmarkSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobBookmark
         fields = ['id', 'job', 'created_at']
+
+
+class BulkJobCreateSerializer(serializers.Serializer):
+    jobs = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1,
+        max_length=100
+    )

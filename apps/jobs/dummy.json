@@ -1,0 +1,975 @@
+{
+  "_documentation": {
+    "endpoint": "POST /api/v1/jobs/bulk_create/",
+    "base_url": "http://localhost:9090/api/v1/jobs/bulk_create/",
+    "authorization": "Admin user required (IsAdminUser permission)",
+    "max_jobs_per_request": 100,
+    "min_jobs_per_request": 1,
+    "description": "Create multiple jobs in a single API call"
+  },
+
+  "_usage": {
+    "curl_example": "curl -X POST http://localhost:9090/api/v1/jobs/bulk_create/ \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer <admin_token>\" \\\n  -d @dummy.json",
+    "fetch_example": "fetch('http://localhost:9090/api/v1/jobs/bulk_create/', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n    'Authorization': 'Bearer <admin_token>'\n  },\n  body: JSON.stringify(data)\n})",
+    "axios_example": "axios.post('http://localhost:9090/api/v1/jobs/bulk_create/', data, {\n  headers: { Authorization: 'Bearer <admin_token>' }\n})"
+  }
+},
+
+{
+  "jobs": [
+    {
+      "title": "Senior Accountant",
+      "company": {
+        "name": "Morgan & Associates CPA",
+        "website": "https://morgancpa.com"
+      },
+      "location": "New York, NY",
+      "industry": "Finance",
+      "description": "Prepare and review financial statements, manage general ledger, and ensure GAAP compliance for corporate clients.",
+      "requirements": "CPA license, 5+ years accounting experience, strong knowledge of GAAP, proficiency in accounting software",
+      "skills": "GAAP, Financial Reporting, General Ledger, QuickBooks, Excel",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 85000,
+      "salary_max": 115000,
+      "salary_currency": "USD",
+      "application_link": "https://morgancpa.com/careers/senior-accountant"
+    },
+    {
+      "title": "Staff Accountant",
+      "company": {
+        "name": "Brighton Financial Group",
+        "website": "https://brightonfinancial.com"
+      },
+      "location": "Boston, MA",
+      "industry": "Finance",
+      "description": "Handle daily bookkeeping, accounts payable/receivable, bank reconciliations, and assist with month-end close.",
+      "requirements": "Bachelor's in Accounting, 1-2 years experience, Excel proficiency, attention to detail",
+      "skills": "Accounts Payable, Accounts Receivable, Bank Reconciliation, Journal Entries, Excel",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 50000,
+      "salary_max": 65000,
+      "salary_currency": "USD",
+      "application_email": "hr@brightonfinancial.com"
+    },
+    {
+      "title": "Tax Manager",
+      "company": {
+        "name": "Summit Tax Solutions",
+        "website": "https://summittax.com"
+      },
+      "location": "Chicago, IL",
+      "industry": "Finance",
+      "description": "Manage tax compliance and planning for high-net-worth individuals and corporations. Supervise tax staff.",
+      "requirements": "CPA license, 7+ years tax experience, mastery of tax code, client management skills",
+      "skills": "Tax Compliance, Tax Planning, Corporate Tax, Individual Tax, IRS Regulations",
+      "job_type": "Full-time",
+      "experience_level": "Executive",
+      "salary_min": 120000,
+      "salary_max": 160000,
+      "salary_currency": "USD",
+      "application_link": "https://summittax.com/careers/tax-manager"
+    },
+    {
+      "title": "Payroll Specialist",
+      "company": {
+        "name": "Payroll Pro Solutions",
+        "website": "https://payrollpro.com"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Process payroll for multiple clients, ensure tax compliance, and resolve payroll discrepancies.",
+      "requirements": "2+ years payroll experience, knowledge of payroll taxes, ADP or Paychex experience preferred",
+      "skills": "Payroll Processing, ADP, Tax Withholding, Direct Deposit, Garnishments",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 45000,
+      "salary_max": 58000,
+      "salary_currency": "USD",
+      "application_email": "jobs@payrollpro.com"
+    },
+    {
+      "title": "Financial Controller",
+      "company": {
+        "name": "Apex Manufacturing Inc",
+        "website": "https://apexmfg.com"
+      },
+      "location": "Detroit, MI",
+      "industry": "Manufacturing",
+      "description": "Oversee all accounting operations including month-end close, financial reporting, and internal controls.",
+      "requirements": "CPA license, 10+ years accounting experience, manufacturing industry knowledge, ERP expertise",
+      "skills": "Financial Controls, ERP Systems, Cash Flow Management, Audit Coordination, Team Leadership",
+      "job_type": "Full-time",
+      "experience_level": "Executive",
+      "salary_min": 130000,
+      "salary_max": 180000,
+      "salary_currency": "USD",
+      "application_link": "https://apexmfg.com/careers/controller"
+    },
+    {
+      "title": "Accounts Receivable Clerk",
+      "company": {
+        "name": "Healthcare Billing Services",
+        "website": "https://healthcarebilling.com"
+      },
+      "location": "Nashville, TN",
+      "industry": "Healthcare",
+      "description": "Process incoming payments, generate invoices, and follow up on overdue accounts.",
+      "requirements": "High school diploma, basic accounting knowledge, attention to detail, customer service skills",
+      "skills": "Invoicing, Collections, Data Entry, Microsoft Office, Customer Communication",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 35000,
+      "salary_max": 45000,
+      "salary_currency": "USD",
+      "application_email": "ar@healthcarebilling.com"
+    },
+    {
+      "title": "Audit Senior Associate",
+      "company": {
+        "name": "Price Sterling Partners",
+        "website": "https://pricesterling.com"
+      },
+      "location": "Los Angeles, CA",
+      "industry": "Finance",
+      "description": "Lead audit engagements for public and private clients. Evaluate internal controls and prepare audit reports.",
+      "requirements": "CPA or CPA candidate, 3+ years audit experience, strong analytical skills, team player",
+      "skills": "Audit Procedures, Internal Controls, Risk Assessment, Financial Analysis, Team Collaboration",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 75000,
+      "salary_max": 95000,
+      "salary_currency": "USD",
+      "application_link": "https://pricesterling.com/careers/audit-senior"
+    },
+    {
+      "title": "Bookkeeper",
+      "company": {
+        "name": "Main Street Accounting",
+        "website": "https://mainstreetaccounting.com"
+      },
+      "location": "Portland, OR",
+      "industry": "Finance",
+      "description": "Maintain accurate financial records for small businesses including reconciliations and financial statements.",
+      "requirements": "2+ years bookkeeping experience, QuickBooks Online expert, reliable and organized",
+      "skills": "QuickBooks Online, Bank Reconciliation, Financial Statements, Expense Tracking, 1099 Preparation",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 42000,
+      "salary_max": 55000,
+      "salary_currency": "USD",
+      "application_link": "https://mainstreetaccounting.com/jobs/bookkeeper"
+    },
+    {
+      "title": "Cost Accountant",
+      "company": {
+        "name": "Precision Industries",
+        "website": "https://precisionind.com"
+      },
+      "location": "Cleveland, OH",
+      "industry": "Manufacturing",
+      "description": "Analyze production costs, develop standard costing models, and identify cost savings opportunities.",
+      "requirements": "3+ years cost accounting experience, manufacturing background, strong analytical skills",
+      "skills": "Cost Analysis, Standard Costing, Inventory Valuation, Variance Analysis, ERP Systems",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 65000,
+      "salary_max": 85000,
+      "salary_currency": "USD",
+      "application_email": "finance@precisionind.com"
+    },
+    {
+      "title": "Part-time Tax Preparer",
+      "company": {
+        "name": "Liberty Tax Services",
+        "website": "https://libertytax.com"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Prepare individual and small business tax returns during tax season. Remote position with flexible hours.",
+      "requirements": "PTIN required, 2+ tax seasons experience, knowledge of tax software, available Jan-April",
+      "skills": "Tax Preparation, Drake or UltraTax, Client Communication, Tax Law Knowledge, Attention to Detail",
+      "job_type": "Part-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 30,
+      "salary_max": 45,
+      "salary_currency": "USD",
+      "application_link": "https://libertytax.com/seasonal-jobs"
+    },
+    {
+      "title": "Internal Auditor",
+      "company": {
+        "name": "Global Retail Group",
+        "website": "https://globalretail.com"
+      },
+      "location": "Atlanta, GA",
+      "industry": "Retail",
+      "description": "Evaluate internal controls, identify risks, and recommend process improvements across retail operations.",
+      "requirements": "CIA or CPA preferred, 4+ years audit experience, retail industry knowledge a plus",
+      "skills": "Internal Audit, Risk Assessment, Process Improvement, Data Analytics, Report Writing",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 80000,
+      "salary_max": 105000,
+      "salary_currency": "USD",
+      "application_email": "internalaudit@globalretail.com"
+    },
+    {
+      "title": "Financial Analyst",
+      "company": {
+        "name": "Capital Advisory Partners",
+        "website": "https://capitaladvisory.com"
+      },
+      "location": "San Francisco, CA",
+      "industry": "Finance",
+      "description": "Build financial models, analyze investment opportunities, and support M&A transactions.",
+      "requirements": "3+ years investment banking or corporate finance, advanced Excel modeling, CFA progress a plus",
+      "skills": "Financial Modeling, Valuation, DCF Analysis, Excel, PowerPoint",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 90000,
+      "salary_max": 130000,
+      "salary_currency": "USD",
+      "application_link": "https://capitaladvisory.com/careers/analyst"
+    },
+    {
+      "title": "Accounts Payable Specialist",
+      "company": {
+        "name": "Northwest Logistics",
+        "website": "https://nwlogistics.com"
+      },
+      "location": "Seattle, WA",
+      "industry": "Transportation",
+      "description": "Process vendor invoices, manage payment runs, and resolve discrepancies with suppliers.",
+      "requirements": "2+ years AP experience, attention to detail, ERP experience preferred",
+      "skills": "Invoice Processing, Three-Way Matching, Vendor Management, ERP Systems, Excel",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 42000,
+      "salary_max": 54000,
+      "salary_currency": "USD",
+      "application_link": "https://nwlogistics.com/careers/ap"
+    },
+    {
+      "title": "Forensic Accountant",
+      "company": {
+        "name": "Investigation & Analysis Firm",
+        "website": "https://iafirm.com"
+      },
+      "location": "Washington, DC",
+      "industry": "Finance",
+      "description": "Investigate financial fraud, analyze complex transactions, and provide expert testimony.",
+      "requirements": "CPA or CFE, 5+ years forensic accounting experience, strong investigative mindset",
+      "skills": "Fraud Investigation, Data Analysis, Litigation Support, Expert Testimony, Financial Tracing",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 100000,
+      "salary_max": 145000,
+      "salary_currency": "USD",
+      "application_email": "forensic@iafirm.com"
+    },
+    {
+      "title": "Accounting Manager",
+      "company": {
+        "name": "Summit Hospitality Group",
+        "website": "https://summithospitality.com"
+      },
+      "location": "Orlando, FL",
+      "industry": "Hospitality",
+      "description": "Supervise accounting team, oversee month-end close, and ensure accurate financial reporting.",
+      "requirements": "CPA preferred, 7+ years accounting experience, hospitality industry experience a plus",
+      "skills": "Team Management, Financial Reporting, Month-End Close, Budgeting, Internal Controls",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 90000,
+      "salary_max": 125000,
+      "salary_currency": "USD",
+      "application_link": "https://summithospitality.com/careers/accounting-manager"
+    },
+    {
+      "title": "Junior Financial Analyst",
+      "company": {
+        "name": "NextGen Ventures",
+        "website": "https://nextgenventures.com"
+      },
+      "location": "Austin, TX",
+      "industry": "Finance",
+      "description": "Support senior analysts with financial modeling, market research, and investment due diligence.",
+      "requirements": "Bachelor's in Finance/Economics, strong Excel skills, internship experience preferred",
+      "skills": "Excel, Financial Modeling, Research, Data Analysis, Presentation Skills",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 55000,
+      "salary_max": 70000,
+      "salary_currency": "USD",
+      "application_email": "careers@nextgenventures.com"
+    },
+    {
+      "title": "Tax Associate",
+      "company": {
+        "name": "Elite Tax Advisors",
+        "website": "https://elitetax.com"
+      },
+      "location": "Dallas, TX",
+      "industry": "Finance",
+      "description": "Prepare corporate and partnership tax returns, conduct tax research, and assist with planning.",
+      "requirements": "CPA or EA candidate, 2+ years tax experience, knowledge of tax software",
+      "skills": "Tax Preparation, Tax Research, CCH Axcess, Corporate Tax, Partnership Tax",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 60000,
+      "salary_max": 78000,
+      "salary_currency": "USD",
+      "application_link": "https://elitetax.com/careers/tax-associate"
+    },
+    {
+      "title": "Credit Analyst",
+      "company": {
+        "name": "First Regional Bank",
+        "website": "https://firstregional.com"
+      },
+      "location": "Charlotte, NC",
+      "industry": "Finance",
+      "description": "Evaluate commercial loan applications, analyze financial statements, and assess credit risk.",
+      "requirements": "3+ years credit analysis experience, strong financial analysis skills, banking knowledge",
+      "skills": "Financial Statement Analysis, Credit Risk, Underwriting, Ratio Analysis, Loan Documentation",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 65000,
+      "salary_max": 88000,
+      "salary_currency": "USD",
+      "application_email": "lending@firstregional.com"
+    },
+    {
+      "title": "Remote QuickBooks Specialist",
+      "company": {
+        "name": "Virtual Bookkeeping Co",
+        "website": "https://virtualbookkeeping.co"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Provide remote bookkeeping services to multiple clients using QuickBooks Online.",
+      "requirements": "QuickBooks ProAdvisor certification, 3+ years experience, excellent communication",
+      "skills": "QuickBooks Online, Cleanup, Reconciliation, Financial Reports, Client Communication",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 50000,
+      "salary_max": 70000,
+      "salary_currency": "USD",
+      "application_link": "https://virtualbookkeeping.co/jobs/qb-specialist"
+    },
+    {
+      "title": "Revenue Accountant",
+      "company": {
+        "name": "SaaS Metrics Inc",
+        "website": "https://saasmetrics.com"
+      },
+      "location": "Remote",
+      "industry": "Technology",
+      "description": "Manage revenue recognition under ASC 606 for subscription-based software company.",
+      "requirements": "CPA preferred, 4+ years revenue accounting experience, ASC 606 expertise",
+      "skills": "ASC 606, Revenue Recognition, Deferred Revenue, Contract Review, Month-End Close",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 85000,
+      "salary_max": 110000,
+      "salary_currency": "USD",
+      "application_email": "finance@saasmetrics.com"
+    },
+    {
+      "title": "Payroll Manager",
+      "company": {
+        "name": "National Staffing Solutions",
+        "website": "https://nationalstaffing.com"
+      },
+      "location": "Phoenix, AZ",
+      "industry": "Consulting",
+      "description": "Oversee multi-state payroll for 2000+ employees, ensure compliance, and manage payroll team.",
+      "requirements": "CPP preferred, 7+ years payroll experience, multi-state tax knowledge, UKG experience",
+      "skills": "Multi-State Payroll, Tax Compliance, Team Leadership, UKG/UltiPro, Reporting",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 80000,
+      "salary_max": 105000,
+      "salary_currency": "USD",
+      "application_link": "https://nationalstaffing.com/careers/payroll-manager"
+    },
+    {
+      "title": "Accounting Intern",
+      "company": {
+        "name": "Sterling CPA Group",
+        "website": "https://sterlingcpa.com"
+      },
+      "location": "Minneapolis, MN",
+      "industry": "Finance",
+      "description": "Summer internship for accounting students. Gain hands-on experience in tax and audit.",
+      "requirements": "Junior or senior in accounting program, 3.0+ GPA, eager to learn, strong work ethic",
+      "skills": "Microsoft Office, Basic Accounting, Attention to Detail, Communication, Teamwork",
+      "job_type": "Internship",
+      "experience_level": "Entry",
+      "salary_min": 20,
+      "salary_max": 25,
+      "salary_currency": "USD",
+      "application_email": "internships@sterlingcpa.com"
+    },
+    {
+      "title": "International Tax Manager",
+      "company": {
+        "name": "Global Tax Alliance",
+        "website": "https://globaltaxalliance.com"
+      },
+      "location": "Miami, FL",
+      "industry": "Finance",
+      "description": "Manage international tax compliance and planning for multinational clients.",
+      "requirements": "CPA or EA, 8+ years international tax experience, knowledge of cross-border treaties",
+      "skills": "International Tax, Transfer Pricing, Foreign Tax Credit, GILTI, Subpart F",
+      "job_type": "Full-time",
+      "experience_level": "Executive",
+      "salary_min": 140000,
+      "salary_max": 190000,
+      "salary_currency": "USD",
+      "application_link": "https://globaltaxalliance.com/careers/intl-tax"
+    },
+    {
+      "title": "Billing Coordinator",
+      "company": {
+        "name": "Metro Law Firm",
+        "website": "https://metrolaw.com"
+      },
+      "location": "Philadelphia, PA",
+      "industry": "Legal",
+      "description": "Process client invoices, track billable hours, and manage collections for law firm.",
+      "requirements": "1+ years billing experience, legal billing software knowledge, detail-oriented",
+      "skills": "Legal Billing, Client Invoicing, Collections, Aderant or Elite, Time Entry",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 40000,
+      "salary_max": 52000,
+      "salary_currency": "USD",
+      "application_email": "hr@metrolaw.com"
+    },
+    {
+      "title": "Fund Accountant",
+      "company": {
+        "name": "Blackstone Alternative Funds",
+        "website": "https://blackstonefunds.com"
+      },
+      "location": "Stamford, CT",
+      "industry": "Finance",
+      "description": "Calculate NAV, prepare financial statements, and handle investor allocations for hedge funds.",
+      "requirements": "3+ years fund accounting experience, CPA a plus, knowledge of investment partnerships",
+      "skills": "Fund Accounting, NAV Calculation, Investor Allocations, Financial Statements, Partnership Accounting",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 80000,
+      "salary_max": 110000,
+      "salary_currency": "USD",
+      "application_link": "https://blackstonefunds.com/careers/fund-accountant"
+    },
+    {
+      "title": "Fixed Asset Accountant",
+      "company": {
+        "name": "Energy Infrastructure Corp",
+        "website": "https://energyinfra.com"
+      },
+      "location": "Houston, TX",
+      "industry": "Energy",
+      "description": "Track and depreciate fixed assets, conduct physical inventory, and ensure proper capitalization.",
+      "requirements": "3+ years fixed asset accounting, knowledge of depreciation methods, strong Excel",
+      "skills": "Fixed Assets, Depreciation, Capitalization Policies, Asset Tracking, Inventory",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 65000,
+      "salary_max": 85000,
+      "salary_currency": "USD",
+      "application_email": "finance@energyinfra.com"
+    },
+    {
+      "title": "Part-time Accounting Clerk",
+      "company": {
+        "name": "Community Non-Profit",
+        "website": "https://communitynonprofit.org"
+      },
+      "location": "Denver, CO",
+      "industry": "Non-Profit",
+      "description": "Part-time position handling data entry, filing, and basic bookkeeping tasks.",
+      "requirements": "High school diploma, basic accounting knowledge, reliable transportation",
+      "skills": "Data Entry, Filing, Excel, Basic Bookkeeping, Organization",
+      "job_type": "Part-time",
+      "experience_level": "Entry",
+      "salary_min": 18,
+      "salary_max": 22,
+      "salary_currency": "USD",
+      "application_link": "https://communitynonprofit.org/jobs/clerk"
+    },
+    {
+      "title": "Director of Finance",
+      "company": {
+        "name": "Innovate Pharmaceuticals",
+        "website": "https://innovatepharma.com"
+      },
+      "location": "Raleigh, NC",
+      "industry": "Healthcare",
+      "description": "Lead finance and accounting function, manage budgeting, forecasting, and financial strategy.",
+      "requirements": "CPA and MBA preferred, 12+ years finance experience, healthcare industry knowledge",
+      "skills": "Strategic Planning, Budgeting, Forecasting, Treasury Management, Team Leadership",
+      "job_type": "Full-time",
+      "experience_level": "Executive",
+      "salary_min": 160000,
+      "salary_max": 220000,
+      "salary_currency": "USD",
+      "application_link": "https://innovatepharma.com/careers/dof"
+    },
+    {
+      "title": "Property Accountant",
+      "company": {
+        "name": "Real Estate Management Group",
+        "website": "https://remg.com"
+      },
+      "location": "Las Vegas, NV",
+      "industry": "Real Estate",
+      "description": "Manage accounting for commercial and residential properties including CAM reconciliations.",
+      "requirements": "3+ years property accounting experience, Yardi or MRI software knowledge",
+      "skills": "Property Accounting, CAM Reconciliation, Rent Roll, Yardi/MRI, Financial Reporting",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 65000,
+      "salary_max": 85000,
+      "salary_currency": "USD",
+      "application_email": "accounting@remg.com"
+    },
+    {
+      "title": "Government Grant Accountant",
+      "company": {
+        "name": "Urban Development Council",
+        "website": "https://urbandevcouncil.gov"
+      },
+      "location": "Baltimore, MD",
+      "industry": "Government",
+      "description": "Track and report on government grant expenditures ensuring compliance with regulations.",
+      "requirements": "3+ years grant accounting experience, knowledge of Uniform Guidance, attention to detail",
+      "skills": "Grant Accounting, Compliance, Government Regulations, Financial Reporting, Audit Support",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 60000,
+      "salary_max": 78000,
+      "salary_currency": "USD",
+      "application_link": "https://urbandevcouncil.gov/careers"
+    },
+    {
+      "title": "Treasury Analyst",
+      "company": {
+        "name": "Corporate Finance Solutions",
+        "website": "https://corpfin.com"
+      },
+      "location": "New York, NY",
+      "industry": "Finance",
+      "description": "Manage cash positioning, forecasting, and banking relationships for corporate clients.",
+      "requirements": "3+ years treasury experience, CTP a plus, strong analytical and communication skills",
+      "skills": "Cash Management, Forecasting, Bank Reconciliation, Debt Compliance, Investment Analysis",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 80000,
+      "salary_max": 110000,
+      "salary_currency": "USD",
+      "application_email": "treasury@corpfin.com"
+    },
+    {
+      "title": "Remote Tax Accountant",
+      "company": {
+        "name": "Digital Tax Pros",
+        "website": "https://digitaltaxpros.com"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Prepare and review tax returns remotely for individuals and small businesses nationwide.",
+      "requirements": "CPA or EA, 4+ years tax experience, proficiency in tax software",
+      "skills": "Tax Preparation, Tax Planning, Client Communication, UltraTax, Remote Collaboration",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 70000,
+      "salary_max": 95000,
+      "salary_currency": "USD",
+      "application_link": "https://digitaltaxpros.com/careers"
+    },
+    {
+      "title": "Inventory Accountant",
+      "company": {
+        "name": "Retail Dynamics Corp",
+        "website": "https://retaildynamics.com"
+      },
+      "location": "Columbus, OH",
+      "industry": "Retail",
+      "description": "Manage inventory valuation, cost of goods sold, and reconcile inventory counts.",
+      "requirements": "3+ years inventory accounting experience, retail or manufacturing background",
+      "skills": "Inventory Valuation, COGS, Cycle Counts, Variance Analysis, ERP Systems",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 60000,
+      "salary_max": 80000,
+      "salary_currency": "USD",
+      "application_email": "finance@retaildynamics.com"
+    },
+    {
+      "title": "Mergers & Acquisitions Accountant",
+      "company": {
+        "name": "Deal Advisory Group",
+        "website": "https://dealadvisory.com"
+      },
+      "location": "San Francisco, CA",
+      "industry": "Finance",
+      "description": "Support financial due diligence and purchase accounting for M&A transactions.",
+      "requirements": "CPA, 5+ years accounting experience, M&A or transaction services background",
+      "skills": "Due Diligence, Purchase Accounting, Quality of Earnings, Integration, Valuation",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 120000,
+      "salary_max": 160000,
+      "salary_currency": "USD",
+      "application_link": "https://dealadvisory.com/careers/ma-accountant"
+    },
+    {
+      "title": "Construction Accountant",
+      "company": {
+        "name": "BuildRight Construction",
+        "website": "https://buildright.com"
+      },
+      "location": "Nashville, TN",
+      "industry": "Construction",
+      "description": "Manage job costing, progress billings, and contract accounting for construction projects.",
+      "requirements": "3+ years construction accounting experience, knowledge of percentage of completion method",
+      "skills": "Job Costing, Progress Billing, AIA Documents, Contract Accounting, Construction Software",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 65000,
+      "salary_max": 88000,
+      "salary_currency": "USD",
+      "application_email": "accounting@buildright.com"
+    },
+    {
+      "title": "Financial Reporting Manager",
+      "company": {
+        "name": "Publicly Traded Solutions",
+        "website": "https://publiclys traded.com"
+      },
+      "location": "Boston, MA",
+      "industry": "Finance",
+      "description": "Prepare SEC filings including 10-K, 10-Q, and ensure SOX compliance.",
+      "requirements": "CPA, 7+ years experience, SEC reporting expertise, public company background",
+      "skills": "SEC Reporting, 10-K, 10-Q, SOX Compliance, Technical Accounting, Workiva",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 120000,
+      "salary_max": 155000,
+      "salary_currency": "USD",
+      "application_link": "https://publiclytraded.com/careers/financial-reporting"
+    },
+    {
+      "title": "Non-Profit Accountant",
+      "company": {
+        "name": "United Charities Organization",
+        "website": "https://unitedcharities.org"
+      },
+      "location": "Washington, DC",
+      "industry": "Non-Profit",
+      "description": "Manage fund accounting, grant tracking, and prepare Form 990 for non-profit organization.",
+      "requirements": "2+ years non-profit accounting experience, knowledge of fund accounting principles",
+      "skills": "Fund Accounting, Grant Management, Form 990, Donor Restrictions, QuickBooks Non-Profit",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 55000,
+      "salary_max": 70000,
+      "salary_currency": "USD",
+      "application_email": "hr@unitedcharities.org"
+    },
+    {
+      "title": "Technical Accounting Manager",
+      "company": {
+        "name": "Complex Accounting Solutions",
+        "website": "https://complexaccounting.com"
+      },
+      "location": "Chicago, IL",
+      "industry": "Finance",
+      "description": "Research complex accounting issues, document positions, and implement new standards.",
+      "requirements": "CPA, 8+ years technical accounting experience, strong research and writing skills",
+      "skills": "Technical Research, ASC Codification, Memo Writing, New Standard Adoption, SEC Reporting",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 130000,
+      "salary_max": 170000,
+      "salary_currency": "USD",
+      "application_link": "https://complexaccounting.com/careers/technical-manager"
+    },
+    {
+      "title": "Accounting Data Analyst",
+      "company": {
+        "name": "FinTech Accounting",
+        "website": "https://fintechaccounting.com"
+      },
+      "location": "Remote",
+      "industry": "Technology",
+      "description": "Analyze accounting data, build dashboards, and automate reporting processes.",
+      "requirements": "Accounting background plus data analytics skills, SQL proficiency, BI tools experience",
+      "skills": "SQL, Tableau/Power BI, Data Analysis, Accounting Principles, Automation",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 75000,
+      "salary_max": 100000,
+      "salary_currency": "USD",
+      "application_email": "datajobs@fintechaccounting.com"
+    },
+    {
+      "title": "Trust Accountant",
+      "company": {
+        "name": "Wealth Management Partners",
+        "website": "https://wealthmp.com"
+      },
+      "location": "St. Louis, MO",
+      "industry": "Finance",
+      "description": "Administer trust accounts, prepare fiduciary accountings, and ensure compliance.",
+      "requirements": "3+ years trust or estate accounting experience, knowledge of fiduciary accounting",
+      "skills": "Trust Accounting, Fiduciary Reporting, Estate Administration, Tax Compliance, Client Service",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 70000,
+      "salary_max": 90000,
+      "salary_currency": "USD",
+      "application_link": "https://wealthmp.com/careers/trust-accountant"
+    },
+    {
+      "title": "Seasonal Tax Preparer",
+      "company": {
+        "name": "FastTax Refunds",
+        "website": "https://fasttaxrefunds.com"
+      },
+      "location": "Multiple Locations",
+      "industry": "Finance",
+      "description": "Seasonal position for tax season. Prepare individual tax returns at retail locations.",
+      "requirements": "PTIN required, previous tax prep experience, customer service skills",
+      "skills": "Individual Tax Preparation, Customer Service, Tax Software, E-filing, Interview Skills",
+      "job_type": "Contract",
+      "experience_level": "Entry",
+      "salary_min": 18,
+      "salary_max": 28,
+      "salary_currency": "USD",
+      "application_email": "seasonal@fasttaxrefunds.com"
+    },
+    {
+      "title": "ERP Accounting Specialist",
+      "company": {
+        "name": "NetSuite Implementation Group",
+        "website": "https://netsuitegroup.com"
+      },
+      "location": "Remote",
+      "industry": "Consulting",
+      "description": "Configure and implement NetSuite accounting modules for clients. Bridge gap between accounting and technology.",
+      "requirements": "Accounting degree, NetSuite certification, 4+ years implementation experience",
+      "skills": "NetSuite, Implementation, Accounting Processes, Training, Configuration",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 90000,
+      "salary_max": 130000,
+      "salary_currency": "USD",
+      "application_link": "https://netsuitegroup.com/careers/erp-specialist"
+    },
+    {
+      "title": "Accounts Payable Manager",
+      "company": {
+        "name": "Enterprise Logistics Corp",
+        "website": "https://enterpriselogistics.com"
+      },
+      "location": "Kansas City, MO",
+      "industry": "Transportation",
+      "description": "Lead AP team, optimize payment processes, and manage vendor relationships.",
+      "requirements": "5+ years AP management experience, process improvement skills, ERP expertise",
+      "skills": "AP Management, Team Leadership, Process Improvement, Vendor Relations, ERP Systems",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 70000,
+      "salary_max": 95000,
+      "salary_currency": "USD",
+      "application_email": "finance@enterpriselogistics.com"
+    },
+    {
+      "title": "Junior Accountant",
+      "company": {
+        "name": "Rising Tide Financial",
+        "website": "https://risingtidefinancial.com"
+      },
+      "location": "Salt Lake City, UT",
+      "industry": "Finance",
+      "description": "Entry-level position supporting senior accountants with reconciliations and journal entries.",
+      "requirements": "Recent accounting graduate, internship experience, strong Excel skills",
+      "skills": "Bank Reconciliation, Journal Entries, Excel, General Ledger, Attention to Detail",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 45000,
+      "salary_max": 55000,
+      "salary_currency": "USD",
+      "application_link": "https://risingtidefinancial.com/careers/junior-accountant"
+    },
+    {
+      "title": "Financial Due Diligence Manager",
+      "company": {
+        "name": "Transaction Advisory Services",
+        "website": "https://transactionadvisory.com"
+      },
+      "location": "Los Angeles, CA",
+      "industry": "Finance",
+      "description": "Lead financial due diligence engagements for private equity and corporate clients.",
+      "requirements": "CPA, 6+ years due diligence experience, strong analytical and communication skills",
+      "skills": "Financial Due Diligence, Quality of Earnings, Working Capital Analysis, Deal Advisory, Report Writing",
+      "job_type": "Full-time",
+      "experience_level": "Executive",
+      "salary_min": 150000,
+      "salary_max": 200000,
+      "salary_currency": "USD",
+      "application_link": "https://transactionadvisory.com/careers/dd-manager"
+    },
+    {
+      "title": "Remote Bookkeeper (Part-time)",
+      "company": {
+        "name": "Freelance Finance Connect",
+        "website": "https://freelancefinance.com"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Part-time remote bookkeeping for multiple small business clients. Flexible schedule.",
+      "requirements": "3+ years bookkeeping experience, QuickBooks Online expert, reliable internet",
+      "skills": "QuickBooks Online, Bank Reconciliation, Expense Tracking, Client Communication, Time Management",
+      "job_type": "Part-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 25,
+      "salary_max": 40,
+      "salary_currency": "USD",
+      "application_email": "apply@freelancefinance.com"
+    },
+    {
+      "title": "Insurance Accountant",
+      "company": {
+        "name": "Guardian Insurance Group",
+        "website": "https://guardianinsurance.com"
+      },
+      "location": "Hartford, CT",
+      "industry": "Finance",
+      "description": "Manage statutory accounting, premium and loss reserves for insurance carrier.",
+      "requirements": "4+ years insurance accounting experience, knowledge of STAT accounting principles",
+      "skills": "Statutory Accounting, Premium Accounting, Loss Reserves, Reinsurance, NAIC Reporting",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 75000,
+      "salary_max": 100000,
+      "salary_currency": "USD",
+      "application_link": "https://guardianinsurance.com/careers/insurance-accountant"
+    },
+    {
+      "title": "Payroll Tax Specialist",
+      "company": {
+        "name": "Compliance Payroll Solutions",
+        "website": "https://compliancepayroll.com"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Ensure payroll tax compliance across multiple states, prepare tax filings, and resolve notices.",
+      "requirements": "3+ years payroll tax experience, multi-state expertise, strong attention to detail",
+      "skills": "Payroll Tax, Multi-State Filing, Tax Notices, Quarterly Returns, Year-End Processing",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 55000,
+      "salary_max": 72000,
+      "salary_currency": "USD",
+      "application_email": "taxjobs@compliancepayroll.com"
+    },
+    {
+      "title": "Senior Financial Accountant",
+      "company": {
+        "name": "Prestige Consumer Brands",
+        "website": "https://prestigebrands.com"
+      },
+      "location": "Cincinnati, OH",
+      "industry": "Manufacturing",
+      "description": "Lead month-end close, prepare consolidated financial statements, and support external audit.",
+      "requirements": "CPA, 5+ years experience, public accounting background preferred, strong technical skills",
+      "skills": "Month-End Close, Consolidations, Financial Statements, Audit Support, Technical Accounting",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 85000,
+      "salary_max": 115000,
+      "salary_currency": "USD",
+      "application_link": "https://prestigebrands.com/careers/senior-accountant"
+    },
+    {
+      "title": "Accounting Systems Analyst",
+      "company": {
+        "name": "TechFinance Integration",
+        "website": "https://techfinance.com"
+      },
+      "location": "Dallas, TX",
+      "industry": "Technology",
+      "description": "Bridge accounting and IT, manage ERP system upgrades, and automate manual processes.",
+      "requirements": "Accounting degree plus IT aptitude, 4+ years systems experience, ERP knowledge",
+      "skills": "ERP Systems, System Implementation, Process Automation, SQL, Accounting Workflows",
+      "job_type": "Full-time",
+      "experience_level": "Mid-Level",
+      "salary_min": 80000,
+      "salary_max": 110000,
+      "salary_currency": "USD",
+      "application_email": "systems@techfinance.com"
+    },
+    {
+      "title": "Bank Reconciliation Specialist",
+      "company": {
+        "name": "Reconcil Solutions",
+        "website": "https://reconsol.com"
+      },
+      "location": "Remote",
+      "industry": "Finance",
+      "description": "Perform daily and monthly bank reconciliations for multiple clients. Identify and resolve discrepancies.",
+      "requirements": "2+ years reconciliation experience, attention to detail, Excel proficiency",
+      "skills": "Bank Reconciliation, Discrepancy Resolution, Excel, Accounting Software, Time Management",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 40000,
+      "salary_max": 52000,
+      "salary_currency": "USD",
+      "application_link": "https://reconsol.com/careers/reconciliation"
+    },
+    {
+      "title": "State and Local Tax (SALT) Associate",
+      "company": {
+        "name": "SALT Advisory Group",
+        "website": "https://saltadvisory.com"
+      },
+      "location": "Atlanta, GA",
+      "industry": "Finance",
+      "description": "Specialize in state and local tax compliance, nexus studies, and controversy resolution.",
+      "requirements": "2+ years SALT experience, knowledge of multi-state tax issues, research skills",
+      "skills": "SALT Compliance, Nexus Studies, Income/Franchise Tax, Sales Tax, Voluntary Disclosure",
+      "job_type": "Full-time",
+      "experience_level": "Entry",
+      "salary_min": 60000,
+      "salary_max": 80000,
+      "salary_currency": "USD",
+      "application_email": "saltjobs@saltadvisory.com"
+    },
+    {
+      "title": "Corporate Accounting Manager",
+      "company": {
+        "name": "Dynamic Enterprises",
+        "website": "https://dynamicenterprises.com"
+      },
+      "location": "Seattle, WA",
+      "industry": "Technology",
+      "description": "Manage corporate accounting team, oversee global consolidation, and improve processes.",
+      "requirements": "CPA, 8+ years experience, public company experience, strong leadership skills",
+      "skills": "Team Management, Global Consolidations, Process Improvement, Internal Controls, Financial Systems",
+      "job_type": "Full-time",
+      "experience_level": "Senior",
+      "salary_min": 120000,
+      "salary_max": 160000,
+      "salary_currency": "USD",
+      "application_link": "https://dynamicenterprises.com/careers/accounting-manager"
+    }
+  ]
+}

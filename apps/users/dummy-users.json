@@ -1,0 +1,119 @@
+{
+  "_documentation": {
+    "endpoint": "PUT /api/v1/users/bulk-create/",
+    "base_url": "http://localhost:9090/api/v1/users/bulk-create/",
+    "method": "PUT",
+    "authorization": "Admin user required (IsAdminUser permission)",
+    "max_users_per_request": 100,
+    "min_users_per_request": 1,
+    "description": "Create multiple users in a single API call"
+  },
+
+  "_usage": {
+    "curl_example": "curl -X PUT http://localhost:9090/api/v1/users/bulk-create/ \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer <admin_token>\" \\\n  -d @dummy-users.json",
+    "fetch_example": "fetch('http://localhost:9090/api/v1/users/bulk-create/', {\n  method: 'PUT',\n  headers: {\n    'Content-Type': 'application/json',\n    'Authorization': 'Bearer <admin_token>'\n  },\n  body: JSON.stringify(data)\n})",
+    "axios_example": "axios.put('http://localhost:9090/api/v1/users/bulk-create/', data, {\n  headers: { Authorization: 'Bearer <admin_token>' }\n})"
+  },
+
+  "_request_schema": {
+    "users": "Array of user objects (required, min: 1, max: 100)",
+    "user_fields": {
+      "email": "User email address (required, must be unique)",
+      "username": "Username (optional, auto-generated from email if not provided)",
+      "password": "Password (optional, default: 'ChangeMe123!')",
+      "first_name": "First name (optional)",
+      "last_name": "Last name (optional)",
+      "is_staff": "Admin staff status (optional, default: false)",
+      "is_superuser": "Superuser status (optional, default: false)"
+    },
+    "important_notes": [
+      "Each email must be unique across all users",
+      "Username is auto-generated if not provided (e.g., 'john' for 'john@example.com')",
+      "Usernames are made unique by appending numbers if duplicates exist",
+      "Default password should be changed after first login"
+    ]
+  },
+
+  "_response_schema": {
+    "success_201": {
+      "created": "Number of users successfully created",
+      "users": "Array of created user objects with full details",
+      "errors": "null (no errors)"
+    },
+    "partial_207": {
+      "created": "Number of users successfully created",
+      "users": "Array of created user objects",
+      "errors": "Array of error objects { index, error, data } for failed items"
+    },
+    "error_400": {
+      "detail": "Error message",
+      "errors": "Array of error details"
+    }
+  },
+
+  "users": [
+    {
+      "email": "alice.johnson@example.com",
+      "username": "alicej",
+      "password": "SecurePass123!",
+      "first_name": "Alice",
+      "last_name": "Johnson"
+    },
+    {
+      "email": "bob.smith@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Bob",
+      "last_name": "Smith"
+    },
+    {
+      "email": "carol.williams@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Carol",
+      "last_name": "Williams",
+      "is_staff": true
+    },
+    {
+      "email": "david.brown@example.com",
+      "password": "SecurePass123!",
+      "first_name": "David",
+      "last_name": "Brown"
+    },
+    {
+      "email": "emma.davis@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Emma",
+      "last_name": "Davis"
+    },
+    {
+      "email": "frank.miller@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Frank",
+      "last_name": "Miller",
+      "is_superuser": true
+    },
+    {
+      "email": "grace.wilson@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Grace",
+      "last_name": "Wilson"
+    },
+    {
+      "email": "henry.moore@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Henry",
+      "last_name": "Moore"
+    },
+    {
+      "email": "iris.taylor@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Iris",
+      "last_name": "Taylor"
+    },
+    {
+      "email": "jack.anderson@example.com",
+      "password": "SecurePass123!",
+      "first_name": "Jack",
+      "last_name": "Anderson"
+    }
+  ]
+}

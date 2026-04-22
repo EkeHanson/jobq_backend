@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .models import Job, Company, ExtractionTask, JobBookmark
-from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSerializer, JobBookmarkSerializer
+from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSerializer, JobBookmarkSerializer, BulkJobCreateSerializer
 
 # AI extraction helper
 from apps.ai.services import extract_job_data
@@ -142,6 +142,67 @@ class JobViewSet(viewsets.ModelViewSet):
                 'message': f'Application for {job.title} at {job.company.name} has been saved'
             },
             status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def bulk_create(self, request):
+        """Bulk create jobs from a list of job data"""
+        serializer = BulkJobCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        jobs_data = serializer.validated_data['jobs']
+        created_jobs = []
+        errors = []
+        
+        for idx, job_data in enumerate(jobs_data):
+            try:
+                company_data = job_data.get('company')
+                company = None
+                
+                if company_data:
+                    company_name = company_data.get('name') if isinstance(company_data, dict) else company_data
+                    company, _ = Company.objects.get_or_create(
+                        name=company_name,
+                        defaults={
+                            'website': company_data.get('website', '') if isinstance(company_data, dict) else '',
+                            'description': company_data.get('description', '') if isinstance(company_data, dict) else ''
+                        }
+                    )
+                else:
+                    company, _ = Company.objects.get_or_create(name='Unknown Company')
+                
+                job = Job.objects.create(
+                    title=job_data.get('title', 'Untitled'),
+                    company=company,
+                    location=job_data.get('location', ''),
+                    industry=job_data.get('industry', 'Other'),
+                    description=job_data.get('description', ''),
+                    requirements=job_data.get('requirements', ''),
+                    skills=job_data.get('skills', ''),
+                    job_type=job_data.get('job_type', 'Full-time'),
+                    experience_level=job_data.get('experience_level', 'Mid-Level'),
+                    salary_min=job_data.get('salary_min'),
+                    salary_max=job_data.get('salary_max'),
+                    salary_currency=job_data.get('salary_currency', 'USD'),
+                    application_link=job_data.get('application_link'),
+                    application_email=job_data.get('application_email'),
+                    created_by=request.user if request.user.is_authenticated else None
+                )
+                created_jobs.append(job)
+            except Exception as e:
+                errors.append({'index': idx, 'error': str(e), 'data': job_data})
+        
+        if created_jobs:
+            jobs_serializer = JobSerializer(created_jobs, many=True, context={'request': request})
+            return Response({
+                'created': len(created_jobs),
+                'jobs': jobs_serializer.data,
+                'errors': errors if errors else None
+            }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)
+        
+        return Response(
+            {'detail': 'No jobs were created', 'errors': errors},
+            status=status.HTTP_400_BAD_REQUEST
         )
 
 
