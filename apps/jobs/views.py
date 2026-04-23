@@ -16,7 +16,7 @@ from apps.ai.services import extract_job_data
 class JobPagination(pagination.PageNumberPagination):
     page_size = 12
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = 1000
 
 
 class JobViewSet(viewsets.ModelViewSet):
@@ -68,6 +68,22 @@ class JobViewSet(viewsets.ModelViewSet):
         industry = self.request.query_params.get('industry')
         if industry:
             qs = qs.filter(industry=industry)
+
+        # Bookmarked filter
+        bookmarked = self.request.query_params.get('bookmarked')
+        if bookmarked and bookmarked.lower() == 'true':
+            if self.request.user and self.request.user.is_authenticated:
+                qs = qs.filter(bookmarks__user=self.request.user)
+            else:
+                qs = qs.none()
+
+        archived = self.request.query_params.get('archived')
+        if archived is None:
+            qs = qs.filter(is_archived=False)
+        elif archived.lower() == 'true':
+            qs = qs.filter(is_archived=True)
+        else:
+            qs = qs.filter(is_archived=False)
         
         return qs
 
@@ -144,6 +160,24 @@ class JobViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def archive(self, request, pk=None):
+        """Archive a job so it is hidden from active job listings."""
+        job = self.get_object()
+        job.is_archived = True
+        job.archived_at = timezone.now()
+        job.save(update_fields=['is_archived', 'archived_at'])
+        return Response({'status': 'archived', 'archived_at': job.archived_at})
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def unarchive(self, request, pk=None):
+        """Restore an archived job."""
+        job = self.get_object()
+        job.is_archived = False
+        job.archived_at = None
+        job.save(update_fields=['is_archived', 'archived_at'])
+        return Response({'status': 'unarchived'})
+
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def bulk_create(self, request):
         """Bulk create jobs from a list of job data"""
@@ -204,6 +238,26 @@ class JobViewSet(viewsets.ModelViewSet):
             {'detail': 'No jobs were created', 'errors': errors},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAdminUser])
+    def stats(self, request):
+        """Return aggregated job statistics for admin dashboard."""
+        total_jobs = Job.objects.count()
+        active_qs = Job.objects.filter(is_archived=False)
+        active_jobs = active_qs.count()
+        archived_jobs = Job.objects.filter(is_archived=True).count()
+        remote_jobs = active_qs.filter(
+            Q(job_type__icontains='remote') | Q(location__icontains='remote')
+        ).count()
+        full_time_jobs = active_qs.filter(job_type__icontains='Full-time').count()
+
+        return Response({
+            'total_jobs': total_jobs,
+            'active_jobs': active_jobs,
+            'archived_jobs': archived_jobs,
+            'remote_jobs': remote_jobs,
+            'full_time_jobs': full_time_jobs,
+        })
 
 
 class CompanyViewSet(viewsets.ModelViewSet):

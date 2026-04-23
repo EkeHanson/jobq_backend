@@ -22,6 +22,7 @@ class Job(models.Model):
     ]
     
     EXPERIENCE_LEVELS = [
+        ('Trainee', 'Trainee'),
         ('Entry', 'Entry Level'),
         ('Mid-Level', 'Mid-Level'),
         ('Senior', 'Senior'),
@@ -65,6 +66,8 @@ class Job(models.Model):
     salary_currency = models.CharField(max_length=10, default='USD')
     application_link = models.URLField(blank=True, null=True)
     application_email = models.EmailField(blank=True, null=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
     posted_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_jobs')
 
@@ -72,6 +75,7 @@ class Job(models.Model):
         ordering = ['-posted_at']  # LIFO - newest first
         indexes = [
             models.Index(fields=['-posted_at']),  # Fast sorting by date
+            models.Index(fields=['is_archived']),
             models.Index(fields=['job_type']),
             models.Index(fields=['experience_level']),
             models.Index(fields=['location']),

@@ -18,7 +18,7 @@ class JobSerializer(serializers.ModelSerializer):
             'id', 'title', 'company', 'location', 'industry', 
             'description', 'requirements', 'skills',
             'job_type', 'experience_level', 'salary_min', 'salary_max',
-            'salary_currency', 'application_link', 'application_email', 'posted_at',
+            'salary_currency', 'application_link', 'application_email', 'is_archived', 'archived_at', 'posted_at',
             'is_bookmarked'
         ]
 
