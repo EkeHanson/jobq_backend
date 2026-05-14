@@ -138,6 +138,67 @@ class JobPosterStats(models.Model):
             self.jobs_posted_today = 0
             self.save()
 
+    def can_post_job(self):
+        """Check if user can post more jobs based on limits"""
+        self.reset_daily_tracker()
+        self.update_monthly_tracker()
+        
+        if self.jobs_posted_today >= self.user.daily_job_limit:
+            return False, f'Daily limit reached ({self.jobs_posted_today}/{self.user.daily_job_limit})'
+        
+        if self.jobs_posted_this_month >= self.user.monthly_job_limit:
+            return False, f'Monthly limit reached ({self.jobs_posted_this_month}/{self.user.monthly_job_limit})'
+        
+        return True, 'Can post job'
+
+    def increment_job_posted(self):
+        """Increment job posted counters"""
+        
+        today = timezone.now().date()
+        
+        # Reset trackers if needed
+        self.reset_daily_tracker()
+        self.update_monthly_tracker()
+        
+        # Increment counters
+        self.total_jobs_posted += 1
+        self.total_jobs_pending += 1
+        self.jobs_posted_today += 1
+        self.jobs_posted_this_month += 1
+        self.last_post_date = today
+        self.save()
+
+    def job_approved(self):
+        """Update stats when a job is approved"""
+        self.total_jobs_approved += 1
+        self.total_jobs_pending = max(0, self.total_jobs_pending - 1)
+        self.save()
+
+    def job_rejected(self):
+        """Update stats when a job is rejected"""
+        self.total_jobs_rejected += 1
+        self.total_jobs_pending = max(0, self.total_jobs_pending - 1)
+        self.save()
+
+    def update_application_stats(self, total_applications):
+        """Update application statistics"""
+        self.total_applications_received = total_applications
+        if self.total_jobs_approved > 0:
+            self.average_applications_per_job = round(
+                total_applications / self.total_jobs_approved, 1
+            )
+        self.save()
+
+    def update_approval_time(self, approval_duration):
+        """Update average approval time"""
+        if self.total_jobs_approved > 0:
+            total_time = (self.average_approval_time or timedelta(0)) * (self.total_jobs_approved - 1)
+            total_time += approval_duration
+            self.average_approval_time = total_time / self.total_jobs_approved
+        else:
+            self.average_approval_time = approval_duration
+        self.save()
+
 
 class JobSearchGoal(models.Model):
     """Weekly job search goal for a user"""
@@ -175,67 +236,6 @@ class JobSearchGoal(models.Model):
         if self.weekly_target <= 0:
             return 0
         return min(100, int((self.applications_this_week / self.weekly_target) * 100))
-    
-    def can_post_job(self):
-        """Check if user can post more jobs based on limits"""
-        self.reset_daily_tracker()
-        self.update_monthly_tracker()
-        
-        if self.jobs_posted_today >= self.user.daily_job_limit:
-            return False, f'Daily limit reached ({self.jobs_posted_today}/{self.user.daily_job_limit})'
-        
-        if self.jobs_posted_this_month >= self.user.monthly_job_limit:
-            return False, f'Monthly limit reached ({self.jobs_posted_this_month}/{self.user.monthly_job_limit})'
-        
-        return True, 'Can post job'
-    
-    def increment_job_posted(self):
-        """Increment job posted counters"""
-        
-        today = timezone.now().date()
-        
-        # Reset trackers if needed
-        self.reset_daily_tracker()
-        self.update_monthly_tracker()
-        
-        # Increment counters
-        self.total_jobs_posted += 1
-        self.total_jobs_pending += 1
-        self.jobs_posted_today += 1
-        self.jobs_posted_this_month += 1
-        self.last_post_date = today
-        self.save()
-    
-    def job_approved(self):
-        """Update stats when a job is approved"""
-        self.total_jobs_approved += 1
-        self.total_jobs_pending = max(0, self.total_jobs_pending - 1)
-        self.save()
-    
-    def job_rejected(self):
-        """Update stats when a job is rejected"""
-        self.total_jobs_rejected += 1
-        self.total_jobs_pending = max(0, self.total_jobs_pending - 1)
-        self.save()
-    
-    def update_application_stats(self, total_applications):
-        """Update application statistics"""
-        self.total_applications_received = total_applications
-        if self.total_jobs_approved > 0:
-            self.average_applications_per_job = round(
-                total_applications / self.total_jobs_approved, 1
-            )
-        self.save()
-
-    def update_approval_time(self, approval_duration):
-        """Update average approval time"""
-        if self.total_jobs_approved > 0:
-            total_time = (self.average_approval_time or timedelta(0)) * (self.total_jobs_approved - 1)
-            total_time += approval_duration
-            self.average_approval_time = total_time / self.total_jobs_approved
-        else:
-            self.average_approval_time = approval_duration
-        self.save()
 
 
 class StaffAssignment(models.Model):
