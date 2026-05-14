@@ -9,8 +9,8 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class JobSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating jobs (includes approval fields)"""
     company = CompanySerializer()
-    is_bookmarked = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -18,37 +18,73 @@ class JobSerializer(serializers.ModelSerializer):
             'id', 'title', 'company', 'location', 'industry', 
             'description', 'requirements', 'skills',
             'job_type', 'experience_level', 'salary_min', 'salary_max',
-            'salary_currency', 'application_link', 'application_email', 'is_archived', 'archived_at', 'posted_at',
-            'is_bookmarked'
+            'salary_currency', 'application_link', 'application_email',
+            'is_approved', 'approval_status', 'reviewed_by', 'reviewed_at',
+            'rejection_reason', 'is_archived', 'archived_at', 'posted_at', 'created_by',
         ]
-
-    def get_is_bookmarked(self, obj):
-        """Check if the current user has bookmarked this job"""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return JobBookmark.objects.filter(user=request.user, job=obj).exists()
-        return False
-
-    def validate(self, data):
-        """Ensure at least application_link or application_email is provided."""
-        if not data.get('application_link') and not data.get('application_email'):
-            raise serializers.ValidationError(
-                "Either application_link or application_email must be provided."
-            )
-        return data
-
+        read_only_fields = [
+            'is_approved', 'approval_status', 'reviewed_by', 'reviewed_at',
+            'is_archived', 'archived_at', 'posted_at', 'created_by',
+        ]
+    
     def create(self, validated_data):
         company_data = validated_data.pop('company', None)
         if company_data:
             company, _ = Company.objects.get_or_create(**company_data)
             validated_data['company'] = company
+        
+        # Set default approval status
+        user = self.context.get('request').user
+        if user and not user.is_staff:
+            validated_data['approval_status'] = 'pending'
+            validated_data['is_approved'] = False
+        
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         company_data = validated_data.pop('company', None)
         if company_data:
             company, _ = Company.objects.get_or_create(**company_data)
-            instance.company = company
+            validated_data['company'] = company
+        return super().update(instance, validated_data)
+
+
+class JobUpdateApprovalSerializer(serializers.ModelSerializer):
+    """Serializer for updating job approval status"""
+    
+    class Meta:
+        model = Job
+        fields = [
+            'id', 'is_approved', 'approval_status', 
+            'reviewed_by', 'reviewed_at', 'rejection_reason'
+        ]
+        read_only_fields = ['id', 'reviewed_at']
+    
+    def validate(self, data):
+        """Validate approval status changes"""
+        instance = self.instance
+        approval_status = data.get('approval_status')
+        is_approved = data.get('is_approved')
+        
+        if approval_status == 'approved' and not is_approved:
+            raise serializers.ValidationError("is_approved must be True when approval_status is 'approved'")
+        
+        if approval_status == 'rejected' and 'rejection_reason' not in data:
+            raise serializers.ValidationError("rejection_reason is required when rejecting a job")
+        
+        return data
+    
+    def update(self, instance, validated_data):
+        from django.utils import timezone
+        
+        approval_status = validated_data.get('approval_status')
+        is_approved = validated_data.get('is_approved')
+        
+        # Set reviewed_at to now when status changes
+        if approval_status and approval_status != instance.approval_status:
+            validated_data['reviewed_at'] = timezone.now()
+            validated_data['reviewed_by'] = self.context.get('request').user
+        
         return super().update(instance, validated_data)
 
 

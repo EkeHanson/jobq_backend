@@ -9,6 +9,9 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+# Generate tokens with custom lifetime based on remember_me
+from django.conf import settings
+from datetime import timedelta
 
 from .serializers import (
     UserSerializer, 
@@ -20,7 +23,8 @@ from .serializers import (
     TwoFactorEnableSerializer,
     BulkUserCreateSerializer,
 )
-from .models import PasswordResetToken, TwoFactorToken, PublicProfile
+from .models import PasswordResetToken, TwoFactorToken, PublicProfile, StaffAssignment, JobPosterStats
+from .serializers_assignment import UserStaffAssignmentSerializer
 
 User = get_user_model()
 
@@ -148,9 +152,7 @@ class LoginView(generics.GenericAPIView):
                 status=200
             )
         
-        # Generate tokens with custom lifetime based on remember_me
-        from django.conf import settings
-        from datetime import timedelta
+
         
         if remember_me:
             # Use longer token lifetime for "remember me" - 30 days
@@ -1057,3 +1059,228 @@ class JobSearchGoalView(generics.GenericAPIView):
             'progress_percentage': goal.get_progress_percentage(),
             'week_start_date': goal.week_start_date,
         })
+
+
+class StaffAssignmentManagementView(generics.GenericAPIView):
+    """API view for managing staff assignments (admin only)"""
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = UserStaffAssignmentSerializer
+
+    def get(self, request, user_id=None):
+        """Get staff assignment for a user or list all assignments"""
+        if user_id:
+            user = generics.get_object_or_404(User, id=user_id)
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+        
+        users = User.objects.all().select_related('assigned_to_staff')
+        serializer = self.get_serializer(users, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, user_id=None):
+        """Create or update staff assignment for a user"""
+        if not user_id:
+            return Response(
+                {'detail': 'user_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = generics.get_object_or_404(User, id=user_id)
+        staff_id = request.data.get('assigned_to_id')
+        
+        if not staff_id:
+            return Response(
+                {'detail': 'assigned_to_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        staff = generics.get_object_or_404(User, id=staff_id, is_staff=True)
+        
+        assignment, created = StaffAssignment.objects.update_or_create(
+            user=user,
+            defaults={
+                'staff': staff,
+                'is_active': True
+            }
+        )
+        
+        user.is_staff_poster = True
+        user.assigned_to_staff = staff
+        user.save()
+        
+        JobPosterStats.objects.get_or_create(user=user)
+        
+        serializer = self.get_serializer(user)
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(serializer.data, status=status_code)
+
+    def patch(self, request, user_id=None):
+        """Update staff assignment (deactivate or change)"""
+        if not user_id:
+            return Response(
+                {'detail': 'user_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = generics.get_object_or_404(User, id=user_id)
+        
+        is_active = request.data.get('is_active')
+        if is_active is not None:
+            assignment = StaffAssignment.objects.filter(user=user).first()
+            if assignment:
+                assignment.is_active = is_active
+                assignment.save()
+        
+        staff_id = request.data.get('assigned_to_id')
+        if staff_id:
+            staff = generics.get_object_or_404(User, id=staff_id, is_staff=True)
+            assignment, _ = StaffAssignment.objects.update_or_create(
+                user=user,
+                defaults={'staff': staff, 'is_active': True}
+            )
+            user.assigned_to_staff = staff
+            user.save()
+        
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+
+class StaffAssignmentDetailView(generics.GenericAPIView):
+    """Get, update, or delete a specific staff assignment"""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, user_id):
+        """Get staff assignment details"""
+        assignment = generics.get_object_or_404(StaffAssignment, user_id=user_id, is_active=True)
+        from .serializers_assignment import StaffAssignmentSerializer
+        serializer = StaffAssignmentSerializer(assignment)
+        return Response(serializer.data)
+
+    def delete(self, request, user_id):
+        """Deactivate a staff assignment"""
+        assignment = generics.get_object_or_404(StaffAssignment, user_id=user_id, is_active=True)
+        assignment.is_active = False
+        assignment.save()
+        
+        user = assignment.user
+        user.is_staff_poster = False
+        user.assigned_to_staff = None
+        user.save()
+        
+        return Response({'status': 'assignment deactivated'}, status=status.HTTP_200_OK)
+
+
+class JobPostingPermissionsView(generics.GenericAPIView):
+    """Check if a user can post jobs and get their limits"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get job posting permissions and stats for current user"""
+        user = request.user
+        stats, created = JobPosterStats.objects.get_or_create(user=user)
+        
+        can_post, message = stats.can_post_job()
+        
+        assignment = user.assigned_to_staff if hasattr(user, 'assigned_to_staff') else None
+        
+        return Response({
+            'user_id': user.id,
+            'username': user.username,
+            'is_staff_poster': user.is_staff_poster,
+            'is_staff': user.is_staff,
+            'can_post_jobs': can_post,
+            'posting_status': message,
+            'assigned_to_staff': {
+                'id': assignment.id,
+                'username': assignment.username,
+                'email': assignment.email
+            } if assignment else None,
+            'limits': {
+                'daily_limit': user.daily_job_limit,
+                'monthly_limit': user.monthly_job_limit,
+                'posted_today': stats.jobs_posted_today,
+                'posted_this_month': stats.jobs_posted_this_month,
+                'remaining_today': max(0, user.daily_job_limit - stats.jobs_posted_today),
+                'remaining_monthly': max(0, user.monthly_job_limit - stats.jobs_posted_this_month),
+            },
+            'statistics': {
+                'total_posted': stats.total_jobs_posted,
+                'total_approved': stats.total_jobs_approved,
+                'total_rejected': stats.total_jobs_rejected,
+                'total_pending': stats.total_jobs_pending,
+                'approval_rate': stats.total_jobs_posted > 0 and round(
+                    (stats.total_jobs_approved / stats.total_jobs_posted) * 100, 1
+                ) or 0,
+                'total_applications': stats.total_applications_received,
+            }
+        })
+
+
+class StaffDashboardView(generics.GenericAPIView):
+    """Dashboard view for staff members"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get dashboard data for staff member"""
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Staff access required'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        assigned_users = StaffAssignment.objects.filter(
+            staff=request.user,
+            is_active=True
+        ).select_related('user')
+        
+        from apps.jobs.models import Job
+        from django.db.models import Count, Q
+        
+        dashboard_data = []
+        total_pending_reviews = 0
+        
+        for assignment in assigned_users:
+            user = assignment.user
+            stats, _ = JobPosterStats.objects.get_or_create(user=user)
+            
+            user_jobs = Job.objects.filter(created_by=user)
+            pending_jobs = user_jobs.filter(approval_status='pending')
+            approved_jobs = user_jobs.filter(is_approved=True)
+            rejected_jobs = user_jobs.filter(approval_status='rejected')
+            
+            total_pending_reviews += pending_jobs.count()
+            
+            dashboard_data.append({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                },
+                'stats': {
+                    'total_posted': stats.total_jobs_posted,
+                    'pending_review': pending_jobs.count(),
+                    'approved': approved_jobs.count(),
+                    'rejected': rejected_jobs.count(),
+                    'approval_rate': stats.total_jobs_posted > 0 and round(
+                        (stats.total_jobs_approved / stats.total_jobs_posted) * 100, 1
+                    ) or 0,
+                },
+                'limits': {
+                    'daily_remaining': max(0, user.daily_job_limit - stats.jobs_posted_today),
+                    'monthly_remaining': max(0, user.monthly_job_limit - stats.jobs_posted_this_month),
+                },
+                'can_post': stats.can_post_job()[0],
+            })
+        
+        return Response({
+            'staff_member': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email,
+            },
+            'total_assigned_users': assigned_users.count(),
+            'total_pending_reviews': total_pending_reviews,
+            'assigned_users': dashboard_data
+        })
+
+

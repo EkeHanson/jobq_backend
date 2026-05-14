@@ -70,6 +70,30 @@ class Job(models.Model):
     archived_at = models.DateTimeField(null=True, blank=True)
     posted_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_jobs')
+    
+    # Approval workflow
+    is_approved = models.BooleanField(default=False, db_index=True, help_text='Whether the job has been approved for public viewing')
+    approval_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending Review'),
+            ('approved', 'Approved'),
+            ('rejected', 'Rejected'),
+        ],
+        default='pending',
+        db_index=True,
+        help_text='Current approval status'
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_jobs',
+        help_text='Staff member who reviewed this job'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, help_text='When the job was reviewed')
+    rejection_reason = models.TextField(blank=True, null=True, help_text='Reason for rejection if applicable')
 
     class Meta:
         ordering = ['-posted_at']  # LIFO - newest first
@@ -80,10 +104,14 @@ class Job(models.Model):
             models.Index(fields=['experience_level']),
             models.Index(fields=['location']),
             models.Index(fields=['industry']),
+            models.Index(fields=['is_approved', 'approval_status']),  # For approval workflow
+            models.Index(fields=['-reviewed_at']),  # Fast sorting by review date
+            models.Index(fields=['created_by', 'is_approved']),  # User's jobs by approval status
         ]
 
     def __str__(self):
-        return f"{self.title} @ {self.company}"
+        status = f" [{self.approval_status.upper()}]" if self.approval_status != 'pending' else ""
+        return f"{self.title} @ {self.company}{status}"
 
 
 class ExtractionTask(models.Model):

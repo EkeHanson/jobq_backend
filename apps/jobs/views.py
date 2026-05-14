@@ -1,5 +1,6 @@
-from rest_framework import viewsets, status, generics, permissions, pagination
+from rest_framework import viewsets, status, generics, permissions, pagination, serializers
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
@@ -11,6 +12,7 @@ from .serializers import JobSerializer, CompanySerializer, ExtractionTaskSeriali
 
 # AI extraction helper
 from apps.ai.services import extract_job_data
+from apps.users.models import JobPosterStats, JobReviewComment
 
 
 class JobPagination(pagination.PageNumberPagination):
@@ -31,13 +33,32 @@ class JobViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         if self.action in ['bookmark', 'unbookmark', 'bookmarks', 'save_application']:
             return [permissions.IsAuthenticated()]
-        return [permissions.IsAdminUser()]
-    search_fields = ['title', 'description', 'company__name', 'location']
-    ordering_fields = ['posted_at', 'title']
-    ordering = ['-posted_at']  # LIFO - newest first
+        if self.action in ['approve', 'reject', 'request_changes']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
 
+    def get_serializer_class(self):
+        """Use JobSerializer for create/update actions"""
+        return JobSerializer
+    
     def get_queryset(self):
         qs = super().get_queryset()
+        
+        # Allow users to access their own jobs regardless of approval status
+        if self.request.user and self.request.user.is_authenticated:
+            # For detail actions (retrieve, update, destroy), allow user to access own jobs
+            if self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'review_history']:
+                qs = qs.filter(Q(created_by=self.request.user) | Q(is_approved=True))
+                return qs
+        
+        # Show all own jobs to authenticated users when requested
+        user_jobs = self.request.query_params.get('user_jobs')
+        show_own_jobs = user_jobs and self.request.user and self.request.user.is_authenticated and user_jobs.lower() == 'true'
+
+        if show_own_jobs:
+            qs = qs.filter(created_by=self.request.user)
+        elif not self.request.user or not self.request.user.is_staff:
+            qs = qs.filter(is_approved=True)
         
         # Search query
         search = self.request.query_params.get('search')
@@ -68,8 +89,17 @@ class JobViewSet(viewsets.ModelViewSet):
         industry = self.request.query_params.get('industry')
         if industry:
             qs = qs.filter(industry=industry)
-
-        # Bookmarked filter
+        
+        # Approval status filter (for staff)
+        approval_status = self.request.query_params.get('approval_status')
+        if approval_status:
+            qs = qs.filter(approval_status=approval_status)
+        
+        # Staff filter (jobs created by or assigned to user)
+        user_jobs = self.request.query_params.get('user_jobs')
+        if user_jobs and self.request.user.is_authenticated:
+            qs = qs.filter(created_by=self.request.user)
+        
         bookmarked = self.request.query_params.get('bookmarked')
         if bookmarked and bookmarked.lower() == 'true':
             if self.request.user and self.request.user.is_authenticated:
@@ -86,6 +116,58 @@ class JobViewSet(viewsets.ModelViewSet):
             qs = qs.filter(is_archived=False)
         
         return qs
+
+    def perform_create(self, serializer):
+        """Override create to track job poster stats and set approval status"""
+        user = self.request.user
+
+        if not user or not user.is_authenticated:
+            raise PermissionDenied('Authentication is required to create a job.')
+
+        if not user.is_staff and not user.is_staff_poster:
+            raise PermissionDenied('You are not authorized to post jobs.')
+        
+        # Determine approval status based on user role
+        is_staff_user = user.is_staff
+        requires_approval = not is_staff_user
+        
+        # Check posting limits for users who require approval
+        stats = None
+        if requires_approval:
+            stats, created = JobPosterStats.objects.get_or_create(user=user)
+            can_post, message = stats.can_post_job()
+            if not can_post:
+                raise serializers.ValidationError({"limit_error": message})
+        
+        # Save the job
+        job = serializer.save(
+            created_by=user,
+            is_approved=not requires_approval,
+            approval_status='approved' if not requires_approval else 'pending',
+            reviewed_by=user if is_staff_user else None,
+            reviewed_at=timezone.now() if is_staff_user else None
+        )
+        
+        # Increment poster stats for users who require approval
+        if requires_approval and stats is not None:
+            stats.increment_job_posted()
+        
+        return job
+
+    def perform_update(self, serializer):
+        """Override update to ensure users can only edit their own jobs"""
+        job = self.get_object()
+        user = self.request.user
+        
+        # Allow staff to update any job, but non-staff can only update their own
+        if not user.is_staff and job.created_by != user:
+            raise PermissionDenied('You can only edit your own job postings.')
+        
+        # Reset approval status if a non-staff user updates a rejected job
+        if not user.is_staff and job.approval_status == 'rejected':
+            serializer.save(approval_status='pending', reviewed_at=None)
+        else:
+            serializer.save()
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def bookmark(self, request, pk=None):
@@ -177,6 +259,133 @@ class JobViewSet(viewsets.ModelViewSet):
         job.archived_at = None
         job.save(update_fields=['is_archived', 'archived_at'])
         return Response({'status': 'unarchived'})
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def approve(self, request, pk=None):
+        """Approve a job post for public viewing"""
+        from apps.users.models import JobPosterStats
+        
+        job = self.get_object()
+        
+        if job.is_approved:
+            return Response(
+                {'detail': 'Job is already approved'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update job status
+        job.is_approved = True
+        job.approval_status = 'approved'
+        job.reviewed_by = request.user
+        job.reviewed_at = timezone.now()
+        job.save()
+        
+        # Update poster statistics
+        if job.created_by:
+            stats, _ = JobPosterStats.objects.get_or_create(user=job.created_by)
+            stats.job_approved()
+
+            approval_duration = timezone.now() - job.posted_at if job.posted_at else None
+            if approval_duration:
+                stats.update_approval_time(approval_duration)
+
+            # Update application stats if applicable
+            application_count = getattr(job, 'applications', None)
+            if application_count is not None:
+                application_count = job.applications.count()
+                stats.update_application_stats(application_count)
+        
+        return Response({
+            'status': 'approved',
+            'job_id': job.id,
+            'title': job.title,
+            'reviewed_by': request.user.username,
+            'reviewed_at': job.reviewed_at
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def reject(self, request, pk=None):
+        """Reject a job post"""
+        from apps.users.models import JobPosterStats
+        
+        job = self.get_object()
+        rejection_reason = request.data.get('rejection_reason', '')
+        
+        if not rejection_reason:
+            return Response(
+                {'detail': 'rejection_reason is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if job.approval_status == 'rejected':
+            return Response(
+                {'detail': 'Job is already rejected'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update job status
+        job.is_approved = False
+        job.approval_status = 'rejected'
+        job.reviewed_by = request.user
+        job.reviewed_at = timezone.now()
+        job.rejection_reason = rejection_reason
+        job.save()
+        
+        # Update poster statistics
+        if job.created_by:
+            stats, _ = JobPosterStats.objects.get_or_create(user=job.created_by)
+            stats.job_rejected()
+        
+        return Response({
+            'status': 'rejected',
+            'job_id': job.id,
+            'title': job.title,
+            'reviewed_by': request.user.username,
+            'reviewed_at': job.reviewed_at
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def request_changes(self, request, pk=None):
+        """Request changes to a job post (with comment)"""
+        job = self.get_object()
+        comment = request.data.get('comment', '')
+        
+        if not comment:
+            return Response(
+                {'detail': 'comment is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create a review comment
+        JobReviewComment.objects.create(
+            job=job,
+            reviewer=request.user,
+            comment=comment,
+            is_internal=False
+        )
+        
+        return Response({
+            'status': 'changes_requested',
+            'job_id': job.id,
+            'comment': comment,
+            'reviewer': request.user.username
+        })
+
+    @action(detail=True, methods=['get'])
+    def review_history(self, request, pk=None):
+        """Get review history for a job"""
+        comments = JobReviewComment.objects.filter(job=self.get_object()).select_related('reviewer')
+        data = [
+            {
+                'id': c.id,
+                'reviewer': c.reviewer.username if c.reviewer else 'System',
+                'comment': c.comment,
+                'is_internal': c.is_internal,
+                'created_at': c.created_at
+            }
+            for c in comments
+        ]
+        return Response(data)
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def bulk_create(self, request):

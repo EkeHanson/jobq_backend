@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-
+from .import views_assignment 
 urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='auth-register'),
     path('login/', views.LoginView.as_view(), name='auth-login'),
@@ -13,11 +13,18 @@ urlpatterns = [
     path('password-reset/request/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('password-reset/verify/', views.PasswordResetVerifyView.as_view(), name='password-reset-verify'),
     path('password-reset/', views.PasswordResetView.as_view(), name='password-reset'),
+    path('users/', views.UserManagementView.as_view(), name='user-management'),
     path('two-factor/verify/', views.TwoFactorVerifyView.as_view(), name='two-factor-verify'),
     path('two-factor/manage/', views.TwoFactorManageView.as_view(), name='two-factor-manage'),
-    path('users/', views.UserManagementView.as_view(), name='user-management'),
+    path('posting/permissions/', views.JobPostingPermissionsView.as_view(), name='job-posting-permissions'),
+    path('staff/dashboard/', views.StaffDashboardView.as_view(), name='staff-dashboard'),
+    path('staff/assignment/', views.StaffAssignmentManagementView.as_view(), name='staff-assignment-management'),
+    path('staff/assignment/<int:user_id>/', views.StaffAssignmentDetailView.as_view(), name='staff-assignment-detail'),
     path('users/bulk-create/', views.BulkUserCreateView.as_view(), name='user-bulk-create'),
     path('users/<int:user_id>/', views.UserDetailView.as_view(), name='user-detail'),
+    path('users/<int:user_id>/assignment/', views.StaffAssignmentManagementView.as_view(), name='user-assignment-detail'),
+    path('poster-stats/', views_assignment.JobPosterStatsViewSet.as_view({'get': 'list'}), name='job-poster-stats'),
+    path('poster-stats/<int:pk>/', views_assignment.JobPosterStatsViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='job-poster-stats-detail'),
     path('public-profile/', views.PublicProfileView.as_view(), name='public-profile'),
     path('public/<slug:slug>/', views.PublicProfileDetailView.as_view(), name='public-profile-detail'),
     path('goal/', views.JobSearchGoalView.as_view(), name='job-search-goal'),

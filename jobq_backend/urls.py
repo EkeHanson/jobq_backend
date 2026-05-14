@@ -8,6 +8,7 @@ from apps.notifications import views as notification_views
 from apps.profiles import views as profile_views
 from apps.subscriptions import views as subscription_views
 from apps.ai import views as ai_views
+from apps.users.views_assignment import StaffAssignmentViewSet, JobPosterStatsViewSet
 
 router = routers.DefaultRouter()
 router.register(r'jobs', job_views.JobViewSet, basename='job')
@@ -19,6 +20,8 @@ router.register(r'reviews', notification_views.ReviewViewSet, basename='review')
 router.register(r'profiles', profile_views.ProfileViewSet, basename='profile')
 router.register(r'subscription', subscription_views.SubscriptionViewSet, basename='subscription')
 router.register(r'ai/interview-prep', ai_views.InterviewPrepViewSet, basename='interview-prep')
+router.register(r'users/staff-assignments', StaffAssignmentViewSet, basename='staff-assignment')
+router.register(r'users/poster-stats', JobPosterStatsViewSet, basename='poster-stats')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
