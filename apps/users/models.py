@@ -137,6 +137,44 @@ class JobPosterStats(models.Model):
             self.last_post_date = today
             self.jobs_posted_today = 0
             self.save()
+
+
+class JobSearchGoal(models.Model):
+    """Weekly job search goal for a user"""
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='job_search_goal'
+    )
+    weekly_target = models.PositiveIntegerField(default=10, help_text='Number of applications to submit per week')
+    applications_this_week = models.PositiveIntegerField(default=0)
+    week_start_date = models.DateField(help_text='Start date of the current week')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Job Search Goal'
+        verbose_name_plural = 'Job Search Goals'
+
+    def __str__(self):
+        return f'Job Search Goal for {self.user.username}'
+
+    def check_and_reset_week(self):
+        """Reset weekly counts if the current week has changed."""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        today = timezone.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        if self.week_start_date != week_start:
+            self.week_start_date = week_start
+            self.applications_this_week = 0
+            self.save()
+
+    def get_progress_percentage(self):
+        if self.weekly_target <= 0:
+            return 0
+        return min(100, int((self.applications_this_week / self.weekly_target) * 100))
     
     def can_post_job(self):
         """Check if user can post more jobs based on limits"""
